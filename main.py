@@ -3,8 +3,12 @@ from input import InputHandler
 from game_manager import GameManeger, RollBackManager
 from threading import Thread
 import id_maker
+from time import perf_counter
 
 ROLLBACK_TEST = False
+WHITE = (255, 255, 255)
+Meiryo_20 = pg.font.SysFont("Meiryo",20)
+
 
 class MainApp:
     SCREENRECT = pg.Rect(0, 0, 1280, 720)
@@ -42,9 +46,9 @@ class MainApp:
         if ROLLBACK_TEST:
             self.rollback_game_thread = Thread(target=self.rollback_mgr.mainloop, daemon=True)
             self.rollback_game_thread.start()
+            self.surface1 = pg.Surface((1280,720)).convert_alpha()
+            self.surface2 = pg.Surface((1280,720)).convert_alpha()
 
-        self.display_thread = Thread(target=self.display_handler, daemon=True)
-        self.display_thread.start()
     
     def add_character(self, color):
         chara_id = id_maker.make_id(self.chara_input_map.values())
@@ -59,27 +63,21 @@ class MainApp:
         del self.chara_input_map[chara_id]
 
     def display_handler(self):
-        surface1 = pg.Surface((1280,720)).convert_alpha()
-        surface2 = pg.Surface((1280,720)).convert_alpha()
-        Meiryo_20 = pg.font.SysFont("Meiryo",20)
-        WHITE = (255,255,255)
-        while self.run:
-            tick = self.display_clock.tick(self.FPS)
-            #print(f"描画FPS: {clock.get_fps():.2f}")
-            if ROLLBACK_TEST:
-                self.window.fill(0)
-                self.game_mgr.draw_game(surface1, tick)
-                self.rollback_mgr.draw_game(surface2, tick)
-                reduced_s1 = pg.transform.smoothscale(surface1, (640,360))
-                reduced_s2 = pg.transform.smoothscale(surface2, (640,360))
-                self.window.blit(reduced_s1,(0,240))
-                self.window.blit(reduced_s2,(640,240))
-            else:
-                self.game_mgr.draw_game(self.window, tick)
-            # fps表示
-            fps_surface = Meiryo_20.render(f"FPS : {int(self.display_clock.get_fps())}  LOGIC : {int(self.game_mgr.frame_rate)}  POLLING : {int(self.polling_clock.get_fps())}", True, WHITE)
-            self.window.blit(fps_surface,dest=(5, 2))
-            pg.display.flip()
+        tick = self.display_clock.tick()
+        if ROLLBACK_TEST:
+            self.window.fill(0)
+            self.game_mgr.draw_game(self.surface1, tick)
+            self.rollback_mgr.draw_game(self.surface2, tick)
+            reduced_s1 = pg.transform.smoothscale(self.surface1, (640,360))
+            reduced_s2 = pg.transform.smoothscale(self.surface2, (640,360))
+            self.window.blit(reduced_s1,(0,240))
+            self.window.blit(reduced_s2,(640,240))
+        else:
+            self.game_mgr.draw_game(self.window, tick)
+        # fps表示
+        fps_surface = Meiryo_20.render(f"FPS : {int(self.display_clock.get_fps())}  LOGIC : {int(self.game_mgr.frame_rate)}  POLLING : {int(self.polling_clock.get_fps())}", True, WHITE)
+        self.window.blit(fps_surface,dest=(5, 2))
+        pg.display.flip()
 
     # イベント処理
     def event_handler(self):
@@ -142,15 +140,21 @@ class MainApp:
     def mainloop(self):
         POLLING_RATE = 1000
 
+        last_render_time = perf_counter()
         while self.run:
             self.polling_clock.tick(POLLING_RATE)
             #clock.tick_busy_loop(POLLING_RATE)
             self.event_handler()
+            # 描画処理
+            if perf_counter() > last_render_time + 1/self.FPS:
+                last_render_time += 1/self.FPS
+                if perf_counter() - last_render_time > 1/self.FPS*2:    # 描画が遅れている場合は時間を修正
+                    last_render_time = perf_counter()
+                self.display_handler()
 
         # 正常終了時処理
         self.game_mgr.run = False
         self.rollback_mgr.run = False
-        self.display_thread.join()
         self.game_thread.join()
         if ROLLBACK_TEST:
             self.rollback_game_thread.join()
