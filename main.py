@@ -142,8 +142,8 @@ class MainApp:
 
         last_render_time = perf_counter()
         while self.run:
-            self.polling_clock.tick(POLLING_RATE)
-            #clock.tick_busy_loop(POLLING_RATE)
+            #self.polling_clock.tick(POLLING_RATE)
+            self.polling_clock.tick_busy_loop(POLLING_RATE)
             self.event_handler()
             # 描画処理
             if perf_counter() > last_render_time + 1/self.FPS:
