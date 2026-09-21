@@ -1,7 +1,7 @@
 import pygame as pg
 from input import InputHandler
 from game_manager import GameManeger, RollBackManager
-from threading import Thread
+from multiprocessing import Value
 import id_maker
 from time import perf_counter
 
@@ -31,7 +31,9 @@ class MainApp:
         self.chara_input_map = {}
         self.joysticks = {}
 
-        self.game_mgr = GameManeger()
+        self.process_running = Value('b', True)
+        self.logic_rate = Value('d', 0)
+        self.game_mgr = GameManeger(self.process_running, self.logic_rate)
         self.game_mgr.init_game()
         self.rollback_mgr = RollBackManager()
         self.rollback_inputs = [[] for _ in range(64*60*60)]
@@ -41,11 +43,9 @@ class MainApp:
         self.display_clock = pg.time.Clock()
 
 
-        self.game_thread = Thread(target=self.game_mgr.mainloop, daemon=True)
-        self.game_thread.start()
         if ROLLBACK_TEST:
-            self.rollback_game_thread = Thread(target=self.rollback_mgr.mainloop, daemon=True)
-            self.rollback_game_thread.start()
+            self.rollback_game_process = Process(target=self.rollback_mgr.mainloop, daemon=True)
+            self.rollback_game_process.start()
             self.surface1 = pg.Surface((1280,720)).convert_alpha()
             self.surface2 = pg.Surface((1280,720)).convert_alpha()
 
@@ -75,7 +75,7 @@ class MainApp:
         else:
             self.game_mgr.draw_game(self.window, tick)
         # fps表示
-        fps_surface = Meiryo_20.render(f"FPS : {int(self.display_clock.get_fps())}  LOGIC : {int(self.game_mgr.frame_rate)}  POLLING : {int(self.polling_clock.get_fps())}", True, WHITE)
+        fps_surface = Meiryo_20.render(f"FPS : {int(self.display_clock.get_fps())}  LOGIC : {int(self.logic_rate.value)}  POLLING : {int(self.polling_clock.get_fps())}", True, WHITE)
         self.window.blit(fps_surface,dest=(5, 2))
         pg.display.flip()
 
@@ -153,11 +153,11 @@ class MainApp:
                 self.display_handler()
 
         # 正常終了時処理
-        self.game_mgr.run = False
+        self.process_running.value = False
         self.rollback_mgr.run = False
-        self.game_thread.join()
+        self.game_mgr.game_process.join()
         if ROLLBACK_TEST:
-            self.rollback_game_thread.join()
+            self.rollback_game_process.join()
         print("Bye!")
 
 if __name__ == '__main__':
