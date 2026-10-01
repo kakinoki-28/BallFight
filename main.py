@@ -8,7 +8,7 @@ ROLLBACK_TEST = False
 
 class MainApp:
     SCREENRECT = pg.Rect(0, 0, 1280, 720)
-    APP_NAME = "SmashBalls"
+    APP_NAME = "BallFight!"
     FPS = 240
 
     def __init__(self):
@@ -124,12 +124,13 @@ class MainApp:
         if any(input_changed.values()):
             for chara_id, changed in input_changed.items():
                 if changed:
-                    #if not self.rollback_mgr.regist_input(chara_id, self.chara_input_map[chara_id], self.rollback_mgr.current_state.frame_number-8):
-                    #    print("Input is skipped")
+                    if not self.rollback_mgr.regist_input(chara_id, self.chara_input_map[chara_id], self.rollback_mgr.current_state.frame_number-8):
+                        print("Input is skipped")
                     self.game_mgr.regist_input(chara_id, self.chara_input_map[chara_id])
-                    self.rollback_inputs[self.game_mgr.state.frame_number].append((chara_id,self.chara_input_map[chara_id].copy()))
+                    f_num = self.game_mgr.state.frame_number
+                    self.rollback_inputs[f_num].append((chara_id,self.chara_input_map[chara_id].copy()))
+                    print(f"f_num:{f_num} ID({chara_id})'s input : {self.chara_input_map[chara_id]}")
 
-                    print(f"f_num:{self.game_mgr.state.frame_number} ID({chara_id})'s input : {self.chara_input_map[chara_id]}")
 
         DELAY_FRAME = 4
         for chara_id, input in self.rollback_inputs[self.rollback_mgr.current_state.frame_number-DELAY_FRAME]:

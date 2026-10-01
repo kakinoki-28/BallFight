@@ -175,3 +175,7 @@ cython_debug/
 
 #Temporary file
 temp/
+
+# 作品提出用
+.zip
+提出作品/
