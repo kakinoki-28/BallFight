@@ -128,6 +128,17 @@ class GameRenderer:
     def debug_toggle(self):
         self.debug_mode = not self.debug_mode
 
+    """ 各オブジェクトの速度ベクトルを描画する関数（デバッグ用）"""
+    def draw_speed(self, target):
+        if target.speed.length() > 0:
+            #speed = target.speed.copy()
+            #draw_arrow(self.screen, SILVER, pygame.Vector2(target.pos.x, self.screen.get_height()-target.pos.y), speed*4, 5)
+            x_only = pygame.Vector2(target.speed.x, 0)
+            y_only = pygame.Vector2(0, target.speed.y)
+            draw_arrow(self.screen, (192,192,192,192), pygame.Vector2(target.pos.x, self.screen.get_height()-target.pos.y), x_only*4, 5)
+            draw_arrow(self.screen, (192,192,192,192), pygame.Vector2(target.pos.x, self.screen.get_height()-target.pos.y), y_only*4, 5)
+
+    """ 毎フレーム描画する関数 """
     def render(self, window, tick, game_state):
         # 背景の描画
         self.screen.blit(self.image_assets.stage["background"], (0, 0))
@@ -187,8 +198,7 @@ class GameRenderer:
 
             # 速度ベクトルの描画（デバッグモード）
             if self.debug_mode:
-                if chara.speed.length() > 0:
-                    draw_arrow(self.screen, SILVER, pygame.Vector2(X, self.screen.get_height()-Y), chara.speed.copy()*4, 5)
+                self.draw_speed(chara)
 
         # 攻撃系の描画
         for chara in game_state.characters_list:
@@ -198,8 +208,7 @@ class GameRenderer:
                     blit_center(self.screen, self.image_assets.bullet[bullet.CONST.name], (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
                     # 速度ベクトルの描画（デバッグモード）
                     if self.debug_mode:
-                        if bullet.speed.length() > 0:
-                            draw_arrow(self.screen, SILVER, pygame.Vector2(bullet.pos.x, self.screen.get_height()-bullet.pos.y), bullet.speed.copy()*4, 5)
+                        self.draw_speed(bullet)
 
             if chara.color == "red":
                 # 近接攻撃の描画
@@ -229,24 +238,21 @@ class GameRenderer:
                         blit_center(self.screen, self.image_assets.bullet[bullet.CONST.name], (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
                         # 速度ベクトルの描画（デバッグモード）
                         if self.debug_mode:
-                            if bullet.speed.length() > 0:
-                                draw_arrow(self.screen, SILVER, pygame.Vector2(bullet.pos.x, self.screen.get_height()-bullet.pos.y), bullet.speed.copy()*4, 5)
+                            self.draw_speed(bullet)
                 # スキル2:ドローン
                 for drone in chara.drone.magazine:
                     if drone.active or drone.wait:
                         blit_center(self.screen, self.image_assets.bullet["drone"], (drone.pos.x, self.screen.get_height()-drone.pos.y))
                         # 速度ベクトルの描画（デバッグモード）
                         if self.debug_mode:
-                            if drone.speed.length() > 0:
-                                draw_arrow(self.screen, SILVER, pygame.Vector2(drone.pos.x, self.screen.get_height()-drone.pos.y), drone.speed.copy()*4, 5)
+                            self.draw_speed(drone)
                 # スキル3:時止め弾
                 for bullet in chara.sync_shot.magazine:
                     if bullet.display:
                         blit_center(self.screen, self.image_assets.bullet[bullet.CONST.name], (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
                         # 速度ベクトルの描画（デバッグモード）
                         if self.debug_mode:
-                            if bullet.speed.length() > 0:
-                                draw_arrow(self.screen, SILVER, pygame.Vector2(bullet.pos.x, self.screen.get_height()-bullet.pos.y), bullet.speed.copy()*4, 5)
-                    
+                            self.draw_speed(bullet)
+
         # 描画の反映
         window.blit(self.screen, (0, 0))
