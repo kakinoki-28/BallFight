@@ -5,6 +5,8 @@ from threading import Thread
 import id_maker
 
 ROLLBACK_TEST = False
+REDUCE_FPS = 4
+NORMAL_FPS = 64
 
 class MainApp:
     SCREENRECT = pg.Rect(0, 0, 1280, 720)
@@ -30,7 +32,7 @@ class MainApp:
         self.game_mgr = GameManeger()
         self.game_mgr.init_game()
         self.rollback_mgr = RollBackManager()
-        self.rollback_inputs = [[] for _ in range(64*60*60)]
+        self.rollback_inputs = [[] for _ in range(NORMAL_FPS*60*60)]
         self.key_chara_id = self.add_character("red")
 
         self.polling_clock = pg.time.Clock()
@@ -42,6 +44,8 @@ class MainApp:
         if ROLLBACK_TEST:
             self.rollback_game_thread = Thread(target=self.rollback_mgr.mainloop, daemon=True)
             self.rollback_game_thread.start()
+
+        self.game_mgr.renderer.debug_toggle()
 
         self.display_thread = Thread(target=self.display_handler, daemon=True)
         self.display_thread.start()
@@ -102,13 +106,20 @@ class MainApp:
                 del self.joysticks[event.instance_id]
             # 入力処理
             elif event.type == pg.KEYDOWN:
+                # ゲーム更新レートの変更
                 if event.key == pg.K_0:
-                    if self.game_mgr.FPS == 64:
-                        self.game_mgr.FPS = self.rollback_mgr.FPS = 4
+                    if self.game_mgr.FPS == NORMAL_FPS:
+                        self.game_mgr.FPS = self.rollback_mgr.FPS = REDUCE_FPS
                         self.game_mgr.FRAME_LATENCY = self.rollback_mgr.FRAME_LATENCY = 1/self.game_mgr.FPS
                     else:
-                        self.game_mgr.FPS = self.rollback_mgr.FPS = 64
+                        self.game_mgr.FPS = self.rollback_mgr.FPS = NORMAL_FPS
                         self.game_mgr.FRAME_LATENCY = self.rollback_mgr.FRAME_LATENCY = 1/self.game_mgr.FPS
+                # デバッグモードの切り替え
+                if event.key == pg.K_F3:
+                    self.game_mgr.renderer.debug_toggle()
+                    print(f"Debug mode :{self.game_mgr.renderer.debug_mode}")
+                    if ROLLBACK_TEST:
+                        self.rollback_mgr.renderer.debug_toggle()
                 input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keydown(event.key)
             elif event.type == pg.KEYUP:
                 input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keyup(event.key)
@@ -129,7 +140,8 @@ class MainApp:
                     self.game_mgr.regist_input(chara_id, self.chara_input_map[chara_id])
                     f_num = self.game_mgr.state.frame_number
                     self.rollback_inputs[f_num].append((chara_id,self.chara_input_map[chara_id].copy()))
-                    print(f"f_num:{f_num} ID({chara_id})'s input : {self.chara_input_map[chara_id]}")
+                    # 入力表示
+                    #print(f"f_num:{f_num} ID({chara_id})'s input : {self.chara_input_map[chara_id]}")
 
 
         DELAY_FRAME = 4

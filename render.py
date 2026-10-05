@@ -5,6 +5,7 @@ import math
 from random import randint
 import gamelogic
 import HUD
+import pygame.gfxdraw
 
 IMAGE_FOLDER = "images"
 
@@ -21,7 +22,6 @@ def load_image(file):
 
 """ おうぎ形を描画する関数 """
 def draw_pie(screen, color, pos, radius, angle, angle_range):
-    import pygame.gfxdraw
     p=[pos]
     for n in range(angle-angle_range,angle+angle_range):
         x = pos[0]+round(radius*math.sin(n*math.pi/180))
@@ -29,6 +29,53 @@ def draw_pie(screen, color, pos, radius, angle, angle_range):
         p.append((x, y))
     pygame.gfxdraw.filled_polygon(screen, p, color)
     pygame.gfxdraw.aapolygon(screen, p, color)
+
+""" 矢印を描画する関数 """
+def draw_arrow(screen, color, start_pos, arrow, width):
+    total_length = arrow.length()
+    # ゼロベクトルなら描画しない
+    if total_length == 0:
+        return
+    # y軸が下向きの座標系に合わせるため、矢印のy成分を反転
+    arrow.y *= -1
+    # 方向ベクトル
+    direction = arrow.normalize()
+
+    # 矢印頭部のサイズ
+    head_length = width * 3     # 矢印の頭の長さ
+    head_width = width * 2.5    # 矢印の頭の横幅
+    # 矢印の頭部が矢印の長さより長くならないように調整
+    if head_length > total_length/2:
+        head_length = total_length/2
+
+    # 各種基準点の計算
+    end_pos = start_pos + arrow                     # 矢印の先端座標
+    head_base = end_pos - direction * head_length   # 矢印の頭の基準点座標
+    # 法線ベクトル
+    normal_vector = direction.rotate(90)
+    # 各頂点の座標を計算
+    shaft_top_left = head_base - normal_vector * (width / 2)
+    shaft_top_right = head_base + normal_vector * (width / 2)
+    shaft_bottom_left = start_pos - normal_vector * (width / 2)
+    shaft_bottom_right = start_pos + normal_vector * (width / 2)
+
+    head_top = end_pos
+    head_btm_right = head_base + normal_vector * (head_width / 2)
+    head_btm_left = head_base - normal_vector * (head_width / 2)
+
+    p = [
+        shaft_bottom_left,
+        shaft_top_left,
+        head_btm_left,
+        head_top,
+        head_btm_right,
+        shaft_top_right,
+        shaft_bottom_right,
+    ]
+
+    pygame.gfxdraw.filled_polygon(screen, p, color)
+    pygame.gfxdraw.aapolygon(screen, p, color)
+
 
 """ 画像Surfaceを保持するクラス """
 @dataclass
@@ -76,6 +123,10 @@ class GameRenderer:
         self.screen = pygame.Surface((gamelogic.Stage.WIDTH, gamelogic.Stage.HEIGHT)).convert_alpha() 
         self.image_assets = ImageAssets()
         self.HUD_LIST = {}
+        self.debug_mode = False
+
+    def debug_toggle(self):
+        self.debug_mode = not self.debug_mode
 
     def render(self, window, tick, game_state):
         # 背景の描画
@@ -133,12 +184,23 @@ class GameRenderer:
                 if chara.shield.radius*2 != shield_image.get_width():
                     shield_image = pygame.transform.smoothscale(shield_image, (chara.shield.radius*2,)*2)
                 blit_center(self.screen, shield_image, (X, self.screen.get_height()-Y))
+
+            # 速度ベクトルの描画（デバッグモード）
+            if self.debug_mode:
+                if chara.speed.length() > 0:
+                    draw_arrow(self.screen, SILVER, pygame.Vector2(X, self.screen.get_height()-Y), chara.speed.copy()*4, 5)
+
         # 攻撃系の描画
         for chara in game_state.characters_list:
             # 反射した弾の描画
             for bullet in chara.shield.hitback_bullets:
                 if bullet.display:
                     blit_center(self.screen, self.image_assets.bullet[bullet.CONST.name], (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
+                    # 速度ベクトルの描画（デバッグモード）
+                    if self.debug_mode:
+                        if bullet.speed.length() > 0:
+                            draw_arrow(self.screen, SILVER, pygame.Vector2(bullet.pos.x, self.screen.get_height()-bullet.pos.y), bullet.speed.copy()*4, 5)
+
             if chara.color == "red":
                 # 近接攻撃の描画
                 if chara.hammer.active:
@@ -165,14 +227,26 @@ class GameRenderer:
                 for bullet in chara.energy_gun.magazine:
                     if bullet.display:
                         blit_center(self.screen, self.image_assets.bullet[bullet.CONST.name], (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
+                        # 速度ベクトルの描画（デバッグモード）
+                        if self.debug_mode:
+                            if bullet.speed.length() > 0:
+                                draw_arrow(self.screen, SILVER, pygame.Vector2(bullet.pos.x, self.screen.get_height()-bullet.pos.y), bullet.speed.copy()*4, 5)
                 # スキル2:ドローン
                 for drone in chara.drone.magazine:
                     if drone.active or drone.wait:
                         blit_center(self.screen, self.image_assets.bullet["drone"], (drone.pos.x, self.screen.get_height()-drone.pos.y))
+                        # 速度ベクトルの描画（デバッグモード）
+                        if self.debug_mode:
+                            if drone.speed.length() > 0:
+                                draw_arrow(self.screen, SILVER, pygame.Vector2(drone.pos.x, self.screen.get_height()-drone.pos.y), drone.speed.copy()*4, 5)
                 # スキル3:時止め弾
                 for bullet in chara.sync_shot.magazine:
                     if bullet.display:
                         blit_center(self.screen, self.image_assets.bullet[bullet.CONST.name], (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
+                        # 速度ベクトルの描画（デバッグモード）
+                        if self.debug_mode:
+                            if bullet.speed.length() > 0:
+                                draw_arrow(self.screen, SILVER, pygame.Vector2(bullet.pos.x, self.screen.get_height()-bullet.pos.y), bullet.speed.copy()*4, 5)
                     
         # 描画の反映
         window.blit(self.screen, (0, 0))
