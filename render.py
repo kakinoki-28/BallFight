@@ -107,7 +107,8 @@ class ImageAssets:
         self.bullet = {
             "liner_bullet": load_image("liner_bullet.png").convert_alpha(),
             "drone": load_image("drone.png").convert_alpha(),
-            "sync_bullet": load_image("sync_bullet.png").convert_alpha()
+            "sync_bullet": load_image("sync_bullet.png").convert_alpha(),
+            "knife_bullet": load_image("Knife.png").convert_alpha(),
         }
         self.effect = {
             "airjump": load_image("airjump.png").convert_alpha()
@@ -253,6 +254,26 @@ class GameRenderer:
                         # 速度ベクトルの描画（デバッグモード）
                         if self.debug_mode:
                             self.draw_speed(bullet)
+            # 緑キャラの描画
+            elif chara.color == "green":
+                # スキル1:クナイ
+                for knife in chara.knife.magazine:
+                    if knife.display:
+                        # 回転させて描画
+                        # 投擲中なら、位置関係から回転を算出
+                        if knife.shoot_wait:
+                            angle = pygame.Vector2(-1,0).angle_to((knife.pos-chara.pos).rotate(90))
+                            knife_image = pygame.transform.rotozoom(self.image_assets.bullet["knife_bullet"].copy(), angle, 1)
+                        # 動作中なら、速度方向から回転を算出
+                        else:
+                            angle = pygame.Vector2(-1,0).angle_to(knife.speed)
+                            knife_image = pygame.transform.rotozoom(self.image_assets.bullet["knife_bullet"].copy(), angle, 1)
+
+                        blit_center(self.screen, knife_image, (knife.pos.x, self.screen.get_height()-knife.pos.y))
+
+                        # 速度ベクトルの描画（デバッグモード）
+                        if self.debug_mode:
+                            self.draw_speed(knife)
 
         # 描画の反映
         window.blit(self.screen, (0, 0))

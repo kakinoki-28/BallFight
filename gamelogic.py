@@ -158,6 +158,9 @@ class Character(GameObject):
             self.sync_shot = SyncShooter(user=self)
             # ハンマー攻撃
             self.hammer = Hammer(user=self)
+        elif self.color == "green":
+            # 射撃
+            self.knife = KnifeManager(user=self)
 
     """ 入力(InputHandler)が更新される処理 """
     def input_update(self, new_input:InputHandler):
@@ -184,6 +187,8 @@ class Character(GameObject):
         if (new_input.skills[0]==True and self.Input.skills[0]==False):
             if self.color =="red" and not self.action_busy:
                 self.energy_gun.lockon()
+            elif self.color == "green" and not self.action_busy:
+                self.knife.throw_start()
         #スキル1 KeyUp
         if (self.Input.skills[0]==True and new_input.skills[0]==False):
             if self.color =="red":
@@ -402,6 +407,8 @@ class Character(GameObject):
             self.energy_gun.update(stage)
             self.drone.update(stage)
             self.sync_shot.update(stage)
+        elif self.color == "green":
+            self.knife.update(stage)
 
     """ くらい判定の確認をする 返り値:当たったオブジェクトのリスト """
     def hit_check(self, pos:Vector2, r:int, anti_bullet:bool=False, anti_shield:bool=False) -> list[GameObject]:
@@ -1055,7 +1062,7 @@ class SyncBullet(LinerBullet):
     def shoot(self, target):
         self.active = True
         self.shoot_wait = False
-        self.speed = (target.pos-self.pos).normalize()*self.speed.length()
+        self.speed = (target.pos-self.pos).normalize()*self.CONST.speed
 
     def update(self, stage:Stage):
         LinerBullet.update(self, stage)
@@ -1094,7 +1101,7 @@ class SyncShooter:
         if self.reload_count==0:
             # 弾を設置
             if self.shoot_count < self.CONST.bullet_max:
-                self.magazine.append(SyncBullet(user=self.user, speed=Vector2(1,0)*self.CONST.bullet_speed, const=gameconst.SyncBulletConst()))
+                self.magazine.append(SyncBullet(user=self.user, speed=Vector2(), const=gameconst.SyncBulletConst()))
                 self.shoot_count+=1
             # 射撃
             else:
@@ -1114,6 +1121,102 @@ class SyncShooter:
                 self.shoot_count = 0
         for bullet in self.magazine:
             bullet.update(stage)
+
+
+""" クナイ：高速で直線方向に進むクナイを投げなげる(緑スキル1) """
+class KnifeBullet(LinerBullet):
+    def __init__(self, user:Character, speed:Vector2, const:gameconst.KnifeBulletConst):
+        LinerBullet.__init__(self, "knife_bullet", user,speed,const)
+        self.active = False
+        self.shoot_wait = True
+
+    def shoot(self, target, rand_angle:int):
+        self.active = True
+        self.shoot_wait = False
+        self.speed = ((target.pos-self.pos).normalize()*self.CONST.speed).rotate(rand_angle)
+
+    def update(self, stage:Stage):
+        LinerBullet.update(self, stage)
+        if self.shoot_wait:
+            self.display = True
+
+""" クナイ(緑スキル1)の投擲・射出を管理するクラス """
+class KnifeManager:
+    def __init__(self, user):
+        self.CONST = gameconst.KnifeManagerConst
+        # 変数
+        self.status = "wait"
+        self.user = user
+        self.target = None
+        self.magazine = []
+        self.throwing_knife = None      # 投擲中のクナイ
+
+        self.throw_count = 0            # 投擲の経過時間カウント
+        self.interval_count = 0         # クナイ射出の間隔のカウント
+        self.shoot_count = 0            # クナイ射出数カウント
+        self.reload_count = 0           # クナイの再装填カウント
+
+    def hit_check(self, pos, r, anti_bullet=False, anti_shield=False):
+        knife_list = []
+        for knife in self.magazine:
+            knife_list += knife.hit_check(pos, r, anti_bullet=anti_bullet)
+        return knife_list
+
+    def damage_process(self, damage):
+        for knife in self.magazine:
+            knife.damage_process(damage)
+
+    def update(self, stage:Stage):
+        if self.reload_count>0:
+            self.reload_count -= 1
+            if self.reload_count==0:
+                self.magazine.clear()
+        # 投擲
+        if self.status == "throw":
+            self.throw_count += 1
+            # 投擲表現
+            if self.target.pos == self.user.pos:
+                self.throwing_knife.pos = Vector2(1,0).rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//2) + self.user.pos
+            else:
+                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize().rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//2) + self.user.pos
+
+            # 投げ終わりで射出
+            if self.throw_count >= self.CONST.throw_time:
+                # ランダム方向を加えて射出
+                rand_angle = randint(-self.CONST.angle_range,self.CONST.angle_range)
+                self.throwing_knife.shoot(self.target, rand_angle)
+
+                # 変数リセット
+                self.throw_count = 0
+                self.throwing_knife = None
+                self.status = "wait"
+                self.user.action_busy = False
+                self.interval_count = self.CONST.interval
+                self.shoot_count += 1
+                if self.shoot_count >= self.CONST.bullet_max:
+                    self.shoot_count = 0
+                    self.reload_count = self.CONST.reload
+        elif self.interval_count>0:
+            self.interval_count -= 1
+
+        for knife in self.magazine:
+            knife.update(stage)
+
+    def throw_start(self):
+        if self.reload_count==0 and self.status == "wait" and self.interval_count==0:
+            self.status = "throw"
+            #弾生成
+            self.target = closest(self.user, self.user.target_list)
+            if self.target==None:
+                self.target=self.user
+            self.throwing_knife = KnifeBullet(user=self.user, speed=Vector2(), const=gameconst.KnifeBulletConst())
+            self.magazine.append(self.throwing_knife)
+            self.user.action_busy = True
+            if (self.target.pos-self.user.pos).length()!=0:
+                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize()*(self.user.radius//2) + self.user.pos
+            else:
+                self.throwing_knife.pos = Vector2(1,0)*(self.user.radius//2) + self.user.pos
+
 
 
 if __name__ == '__main__':

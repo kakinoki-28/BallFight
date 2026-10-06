@@ -33,7 +33,7 @@ class MainApp:
         self.game_mgr.init_game()
         self.rollback_mgr = RollBackManager()
         self.rollback_inputs = [[] for _ in range(NORMAL_FPS*60*60)]
-        self.key_chara_id = self.add_character("red")
+        self.key_chara_id = self.add_character("green")
 
         self.polling_clock = pg.time.Clock()
         self.display_clock = pg.time.Clock()
