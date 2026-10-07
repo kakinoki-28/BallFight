@@ -234,8 +234,6 @@ class KnifeBulletConst(LinerBulletConst):
     hp_max: int = 10                    # 弾の耐性
     alive_frame: int = 60               # 弾が残るフレーム
 
-    speed: int = 24                     # 弾のスピード
-
     combo_interval: int = 0             # コンボ判定(ダメージ減算)が続くフレーム(0でコンボ無効)
     no_damage_frame: int = 16           # 当たったキャラが獲得する無敵フレーム
     hit_stop: int = 16                  # ヒットストップするフレーム
@@ -248,19 +246,20 @@ class KnifeBulletConst(LinerBulletConst):
     def __post_init__(self):
         # 攻撃判定（相対位置、半径、ダメージ）を保存するリスト
         self.hit_circles = [
-            Collision_Circle(Vector2(0,0), 10, self.damage)
+            Collision_Circle(Vector2(-10,0), 20, self.damage)
         ]
 
 
 """ クナイ管理の定数 """
 @dataclass
 class KnifeManagerConst:
-    throw_time: int = 12        # 射出にかかるフレーム
-    angle_range: int = 5       # 射出角度の幅
-    interval: int = 24          # ドローン射出から次のドローンまでの間隔
+    throw_time: int = 8        # 射出にかかるフレーム
+    angle_range: int = 10       # 射出角度の幅
+    interval: int = 24          # クナイ射出から次のクナイまでの間隔
+    speed: int = 20             # クナイに与える初速
 
     reload: int = 192           # 再装填までのフレーム
-    bullet_max: int = 4         # 弾の最大数
+    bullet_max: int = 6         # 弾の最大数
 
 def debug():
     CONST = EnergyBulletConst(damage=10)

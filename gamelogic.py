@@ -1130,10 +1130,10 @@ class KnifeBullet(LinerBullet):
         self.active = False
         self.shoot_wait = True
 
-    def shoot(self, target, rand_angle:int):
+    def shoot(self, speed:Vector2):
         self.active = True
         self.shoot_wait = False
-        self.speed = ((target.pos-self.pos).normalize()*self.CONST.speed).rotate(rand_angle)
+        self.speed = speed
 
     def update(self, stage:Stage):
         LinerBullet.update(self, stage)
@@ -1176,15 +1176,16 @@ class KnifeManager:
             self.throw_count += 1
             # 投擲表現
             if self.target.pos == self.user.pos:
-                self.throwing_knife.pos = Vector2(1,0).rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//2) + self.user.pos
+                self.throwing_knife.pos = Vector2(1,0).rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//3*2) + self.user.pos
             else:
-                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize().rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//2) + self.user.pos
+                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize().rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//3*2) + self.user.pos
 
             # 投げ終わりで射出
             if self.throw_count >= self.CONST.throw_time:
                 # ランダム方向を加えて射出
                 rand_angle = randint(-self.CONST.angle_range,self.CONST.angle_range)
-                self.throwing_knife.shoot(self.target, rand_angle)
+                speed = ((self.target.pos-self.throwing_knife.pos).normalize()*self.CONST.speed).rotate(rand_angle)
+                self.throwing_knife.shoot(speed)
 
                 # 変数リセット
                 self.throw_count = 0
@@ -1213,9 +1214,9 @@ class KnifeManager:
             self.magazine.append(self.throwing_knife)
             self.user.action_busy = True
             if (self.target.pos-self.user.pos).length()!=0:
-                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize()*(self.user.radius//2) + self.user.pos
+                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize()*(self.user.radius//3*2) + self.user.pos
             else:
-                self.throwing_knife.pos = Vector2(1,0)*(self.user.radius//2) + self.user.pos
+                self.throwing_knife.pos = Vector2(1,0)*(self.user.radius//3*2) + self.user.pos
 
 
 
