@@ -161,6 +161,7 @@ class Character(GameObject):
         elif self.color == "green":
             # 射撃
             self.knife = KnifeManager(user=self)
+            self.shuriken = ShurikenManager(user=self)
 
     """ 入力(InputHandler)が更新される処理 """
     def input_update(self, new_input:InputHandler):
@@ -198,6 +199,8 @@ class Character(GameObject):
         if (new_input.skills[1]==True and self.Input.skills[1]==False):
             if self.color =="red" and not self.action_busy:
                 self.drone.throw_start()
+            elif self.color == "green" and not self.action_busy:
+                self.shuriken.throw_start()
         #スキル2 KeyUp
         if (self.Input.skills[1]==True and new_input.skills[1]==False):
             pass
@@ -206,7 +209,7 @@ class Character(GameObject):
         if (new_input.skills[2]==True and self.Input.skills[2]==False):
             if self.color =="red" and (self.sync_shot.shoot_count==self.sync_shot.CONST.bullet_max or not self.action_busy):
                 self.sync_shot.shoot()
-        #スキル2 KeyUp
+        #スキル3 KeyUp
         if (self.Input.skills[2]==True and new_input.skills[2]==False):
             pass
 
@@ -272,7 +275,7 @@ class Character(GameObject):
                 self.blowed = False
             # 跳ね
             if self.speed.y<0:
-                self.speed.y = round(abs(self.speed.y)/2)
+                self.speed.y = round(abs(self.speed.y)*self.CONST.bounce)
                 if self.speed.y != 0:
                     self.hopping = True
             # 摩擦
@@ -409,6 +412,7 @@ class Character(GameObject):
             self.sync_shot.update(stage)
         elif self.color == "green":
             self.knife.update(stage)
+            self.shuriken.update(stage)
 
     """ くらい判定の確認をする 返り値:当たったオブジェクトのリスト """
     def hit_check(self, pos:Vector2, r:int, anti_bullet:bool=False, anti_shield:bool=False) -> list[GameObject]:
@@ -422,6 +426,9 @@ class Character(GameObject):
             hit_objects += self.energy_gun.hit_check(pos, r, anti_bullet=anti_bullet, anti_shield=anti_shield)
             hit_objects += self.drone.hit_check(pos, r, anti_bullet=anti_bullet, anti_shield=anti_shield)
             hit_objects += self.sync_shot.hit_check(pos, r, anti_bullet=anti_bullet, anti_shield=anti_shield)
+        elif self.color == "green":
+            hit_objects += self.knife.hit_check(pos, r, anti_bullet=anti_bullet, anti_shield=anti_shield)
+            hit_objects += self.shuriken.hit_check(pos, r, anti_bullet=anti_bullet, anti_shield=anti_shield)
         return hit_objects
 
     """ ダメージとコンボの処理を行う """
@@ -468,6 +475,7 @@ class Shield:
         self.instant_count = 0
         self.recovery_count = 0
         self.hitback_bullets = []
+        self.hitback_objects = []
 
     """ 入力開始時 """
     def shield_start(self):
@@ -508,6 +516,8 @@ class Shield:
 
         for bullet in self.hitback_bullets:
             hit_objects += bullet.hit_check(pos, r, anti_bullet=anti_bullet)
+        for obj in self.hitback_objects:
+            hit_objects += obj.hit_check(pos, r, anti_bullet=anti_bullet)
 
         return hit_objects
 
@@ -523,6 +533,7 @@ class Shield:
         for enemy in self.user.target_list:
             # 相手のオブジェクトと衝突判定
             for target in enemy.hit_check(self.pos, self.radius, anti_bullet=True):
+                print(f"Shield Hit {target.__class__.__name__} from {enemy.color}")
                 # 弾
                 if isinstance(target,LinerBullet):
                     if target.bounced:
@@ -545,6 +556,8 @@ class Shield:
                                 target.user.energy_gun.remove_bullet(target)
                         elif type(target)==SyncBullet:
                             target.user.sync_shot.remove_bullet(target)
+                        elif type(target)==KnifeBullet:
+                            target.user.knife.remove_bullet(target)
 
                         target.user = self.user
                         target.alive_count = 0
@@ -554,6 +567,25 @@ class Shield:
 
                 elif type(target)==Drone:
                     target.active = False
+
+                elif type(target)==Shuriken:
+                    circle_pos = target.pos + target.CONST.hit_circles[0].rel_pos
+                    circle_radius = target.CONST.hit_circles[0].radius
+                    # 反射位置の調整（互いのキャラが接近中は無効）
+                    if self.pos.distance_to(target.user.pos) >= self.radius:
+                        if (target.pos-self.pos).length() == 0:
+                            target.pos += Vector2(1,0)*(self.radius + circle_radius)
+                        else:
+                            target.pos += (target.pos-self.pos).normalize()*(self.radius + circle_radius) - (target.pos-self.pos)
+                    # 反射するための前処理
+                    self.hitback_objects.append(target)
+                    target.user.shuriken.remove(target)
+                    # 反射処理
+                    target.user = self.user
+                    target.alive_count = 0
+                    target.no_damage_count=8
+                    target.speed *= -1
+                        
 
     def update(self, stage:Stage):
         self.pos = self.user.pos.copy()
@@ -584,6 +616,10 @@ class Shield:
             bullet.update(stage)
             if not bullet.active and not bullet.display:
                 self.hitback_bullets.remove(bullet)
+        for obj in self.hitback_objects:
+            obj.update(stage)
+            if not obj.active and not obj.display:
+                self.hitback_objects.remove(obj)
 
 
 """ 事前に入力された速度方向に真っ直ぐ飛翔する弾 """
@@ -915,6 +951,7 @@ class Drone(GameObject):
         self.target = target
         self.active = False         # ドローンを更新するかの判定
         self.wait = True            # 射出モーション中かの判定（表示を切らない為）
+        self.display = True         # ドローンを表示するかの判定
 
         self.alive_count = 0        # 弾の存在時間のカウント
         self.startup_count = 0      # 射出直後に直進するフレームのカウント
@@ -955,6 +992,14 @@ class Drone(GameObject):
             # 消滅条件
             if self.hp<0 or self.alive_count>self.CONST.alive_frame:
                 self.active = False
+        else:
+            # ヒットストップが終わるまで表示する
+            if self.hitwait_count>0:
+                self.hitwait_count -= 1
+            # 射出モーション以外でactive=Falseなら表示を切る
+            elif not self.wait:
+                self.display = False
+        
 
     def attack(self):
         for circle in self.CONST.hit_circles:
@@ -1157,6 +1202,7 @@ class KnifeManager:
         self.reload_count = 0           # クナイの再装填カウント
 
     def hit_check(self, pos, r, anti_bullet=False, anti_shield=False):
+        print(f"KnifeManager hit_check: pos={pos}, r={r}, anti_bullet={anti_bullet}, anti_shield={anti_shield}")
         knife_list = []
         for knife in self.magazine:
             knife_list += knife.hit_check(pos, r, anti_bullet=anti_bullet)
@@ -1165,6 +1211,9 @@ class KnifeManager:
     def damage_process(self, damage):
         for knife in self.magazine:
             knife.damage_process(damage)
+
+    def remove_bullet(self, bullet):
+        self.magazine.remove(bullet)
 
     def update(self, stage:Stage):
         if self.reload_count>0:
@@ -1217,6 +1266,174 @@ class KnifeManager:
                 self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize()*(self.user.radius//3*2) + self.user.pos
             else:
                 self.throwing_knife.pos = Vector2(1,0)*(self.user.radius//3*2) + self.user.pos
+
+
+""" 手裏剣：放物線を描いて跳ね続ける弾を投げる(緑スキル2) """
+class Shuriken(GameObject):
+    def __init__(self, user):
+        GameObject.__init__( self, user.pos, Vector2(0,0) )
+        # 定数
+        self.CONST = gameconst.ShurikenConst()
+        # 変数
+        self.hp = self.CONST.hp_max
+        self.user = user
+        self.active = False         # 手裏剣を更新するかの判定
+        self.wait = True            # 射出モーション中かの判定（表示を切らない為）
+        self.display = True         # 手裏剣を表示するかの判定
+
+        self.alive_count = 0        # 弾の存在時間のカウント
+        self.hitwait_count = 0      # ヒットストップ中のカウント
+
+    def hit_check(self, pos, r, anti_bullet=False, anti_shield=False):
+        for circle in self.CONST.hit_circles:
+            circle_pos = self.pos + circle.rel_pos
+            if anti_bullet and circle_pos.distance_to(pos) < circle.radius+r and self.active:
+                return [self]
+        return []
+
+    def damage_process(self, damage):
+        self.hp -= damage
+
+    def update(self, stage:Stage):
+        if self.active:
+            self.attack()
+            # 速度更新
+            # 放物線を描いて動く
+            self.speed.y -= self.CONST.gravity
+            # 地面・台との衝突判定
+            for circle in self.CONST.hit_circles:
+                foot, top = (self.pos + circle.rel_pos) - Vector2(0, circle.radius), (self.pos + circle.rel_pos) + Vector2(0, circle.radius)
+                next_foot, next_top = foot+self.speed, top+self.speed
+                for platform in stage.platforms:
+                    if (self.pos+circle.rel_pos in platform or (platform.is_below(foot) and platform.is_above(next_top)) or (platform.is_above(top) and platform.is_below(next_foot))):
+                        # 反転処理(固定速度で反転)
+                        self.speed.y = self.CONST.reflection_y
+                        self.pos.y = platform.y + circle.radius
+                if foot[1] < stage.GND_HEIGHT:
+                    self.speed.y = self.CONST.reflection_y
+                    self.pos.y = stage.GND_HEIGHT + circle.radius
+
+
+            GameObject.update(self)
+            self.alive_count += 1
+
+            # 消滅条件
+            if self.hp<0 or self.alive_count>self.CONST.alive_frame:
+                self.active = False
+        else:
+            # ヒットストップが終わるまで表示する
+            if self.hitwait_count>0:
+                self.hitwait_count -= 1
+            # 射出モーション以外でactive=Falseなら表示を切る
+            elif not self.wait:
+                self.display = False
+
+    def attack(self):
+        for circle in self.CONST.hit_circles:
+            pos = self.pos + circle.rel_pos
+            for enemy in self.user.target_list:
+                for target in enemy.hit_check(pos, circle.radius, anti_bullet=True):
+                    # ダメージ処理
+                    target.damage_process(circle.damage)
+                    # キャラに当たった
+                    if type(target) == Character:
+                        # 無敵処理
+                        target.no_damage_count = self.CONST.no_damage_frame
+                        # ヒットストップ処理
+                        target.set_stop(self.CONST.hit_stop, self.CONST.shake)
+                        self.hitwait_count = int(self.CONST.hit_stop/2)
+                    self.active = False
+
+    def shoot(self, speed:Vector2):
+        self.active = True
+        self.wait = False
+        self.speed = speed
+
+""" 手裏剣(緑スキル2)の投擲・射出を管理するクラス """
+class ShurikenManager:
+    def __init__(self, user):
+        self.CONST = gameconst.ShurikenManagerConst
+        # 変数
+        self.status = "wait"
+        self.user = user
+        self.magazine = []
+        self.throwing = None            # 投擲中の手裏剣
+        self.throw_direction = "right"  # 投擲方向の判定（左右）
+
+        self.throw_count = 0        # 投擲の経過時間カウント
+        self.interval_count = 0     # 手裏剣射出の間隔のカウント
+        self.shoot_count = 0        # 手裏剣射出数カウント
+        self.reload_count = 0       # 手裏剣の再装填カウント
+
+    def hit_check(self, pos, r, anti_bullet=False, anti_shield=False):
+        shuriken_list = []
+        for shuriken in self.magazine:
+            shuriken_list += shuriken.hit_check(pos, r, anti_bullet=anti_bullet)
+        return shuriken_list
+
+    def damage_process(self, damage):
+        for shuriken in self.magazine:
+            shuriken.damage_process(damage)
+
+    def remove(self, shuriken):
+        self.magazine.remove(shuriken)
+
+    def update(self, stage:Stage):
+        if self.reload_count>0:
+            self.reload_count -= 1
+            if self.reload_count==0:
+                self.magazine.clear()
+        # 投擲
+        if self.status == "throw":
+            # 投擲表現
+            start_offset = Vector2(self.CONST.start_offset)
+            if self.throw_direction == "right":
+                throw_offset = Vector2(self.CONST.throw_offset)
+            else:
+                throw_offset = Vector2(-self.CONST.throw_offset[0], self.CONST.throw_offset[1])
+            self.throwing.pos = (throw_offset-start_offset)*(self.throw_count/self.CONST.throw_time) + start_offset + self.user.pos
+            self.throw_count += 1
+
+            # 投げ終わりで射出
+            if self.throw_count >= self.CONST.throw_time:
+                self.throw_count = 0
+                if self.throw_direction == "right":
+                    self.throwing.shoot(Vector2(self.CONST.throw_speed_x, self.CONST.throw_speed_y))
+                else:
+                    self.throwing.shoot(Vector2(-self.CONST.throw_speed_x, self.CONST.throw_speed_y))
+                self.throwing = None
+                self.status = "wait"
+                self.user.action_busy = False
+                self.interval_count = self.CONST.interval
+                self.shoot_count += 1
+                if self.shoot_count >= self.CONST.shuriken_max:
+                    self.shoot_count = 0
+                    self.reload_count = self.CONST.reload
+        elif self.interval_count>0:
+            self.interval_count -= 1
+
+        for shuriken in self.magazine:
+            shuriken.update(stage)
+
+    def throw_start(self):
+        if self.reload_count==0 and self.status == "wait" and self.interval_count==0:
+            self.status = "throw"
+            #弾生成
+            target = closest(self.user, self.user.target_list)
+            if target==None:
+                target=self.user
+            self.throwing = Shuriken(user=self.user)
+            self.magazine.append(self.throwing)
+            self.user.action_busy = True
+            # 射出処理
+            self.throwing.pos = Vector2(self.CONST.start_offset) + self.user.pos
+            # 射出方向は左右で判断
+            # Xがターゲットの方が大きいなら右
+            if target.pos.x>=self.user.pos.x:
+                self.throw_direction = "right"
+            # Xがターゲットの方が小さいなら左
+            else:
+                self.throw_direction = "left"
 
 
 

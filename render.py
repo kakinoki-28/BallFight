@@ -109,6 +109,7 @@ class ImageAssets:
             "drone": load_image("drone.png").convert_alpha(),
             "sync_bullet": load_image("sync_bullet.png").convert_alpha(),
             "knife_bullet": load_image("Knife.png").convert_alpha(),
+            "shuriken": load_image("Shuriken.png").convert_alpha(),
         }
         self.effect = {
             "airjump": load_image("airjump.png").convert_alpha()
@@ -206,10 +207,27 @@ class GameRenderer:
             # 反射した弾の描画
             for bullet in chara.shield.hitback_bullets:
                 if bullet.display:
-                    blit_center(self.screen, self.image_assets.bullet[bullet.CONST.name], (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
+                    if type(bullet) == gamelogic.KnifeBullet:
+                        angle = pygame.Vector2(-1,0).angle_to(bullet.speed)
+                        bullet_image = pygame.transform.rotozoom(self.image_assets.bullet[bullet.CONST.name], angle, 1)
+                    else:
+                        bullet_image = self.image_assets.bullet[bullet.CONST.name]
+                    blit_center(self.screen, bullet_image, (bullet.pos.x, self.screen.get_height()-bullet.pos.y))
                     # 速度ベクトルの描画（デバッグモード）
                     if self.debug_mode:
                         self.draw_speed(bullet)
+            # 反射したオブジェクトの描画
+            for obj in chara.shield.hitback_objects:
+                if obj.display:
+                    # 手裏剣
+                    if type(obj) == gamelogic.Shuriken:
+                        # 回転させて描画
+                        angle = int((obj.alive_count/64) * 360 * 4)
+                        shuriken_image = pygame.transform.rotozoom(self.image_assets.bullet["shuriken"].copy(), angle, 1)
+                        blit_center(self.screen, shuriken_image, (obj.pos.x, self.screen.get_height()-obj.pos.y))
+                    # 速度ベクトルの描画（デバッグモード）
+                    if self.debug_mode:
+                        self.draw_speed(obj)
 
             if chara.color == "red":
                 # 近接攻撃の描画
@@ -242,7 +260,7 @@ class GameRenderer:
                             self.draw_speed(bullet)
                 # スキル2:ドローン
                 for drone in chara.drone.magazine:
-                    if drone.active or drone.wait:
+                    if drone.display:
                         blit_center(self.screen, self.image_assets.bullet["drone"], (drone.pos.x, self.screen.get_height()-drone.pos.y))
                         # 速度ベクトルの描画（デバッグモード）
                         if self.debug_mode:
@@ -274,6 +292,17 @@ class GameRenderer:
                         # 速度ベクトルの描画（デバッグモード）
                         if self.debug_mode:
                             self.draw_speed(knife)
+                # スキル2:手裏剣
+                for shuriken in chara.shuriken.magazine:
+                    if shuriken.display:
+                        # 回転させて描画
+                        angle = int((shuriken.alive_count/64) * 360 * 4)
+                        shuriken_image = pygame.transform.rotozoom(self.image_assets.bullet["shuriken"].copy(), angle, 1)
+                        blit_center(self.screen, shuriken_image, (shuriken.pos.x, self.screen.get_height()-shuriken.pos.y))
+                        # 速度ベクトルの描画（デバッグモード）
+                        if self.debug_mode:
+                            self.draw_speed(shuriken)
+
 
         # 描画の反映
         window.blit(self.screen, (0, 0))

@@ -28,6 +28,7 @@ class CharacterConst:
     restrict_jump: int = 12         # 制限付き(シールドガード時の)ジャンプの高さ
 
     gravity: float = 1.0            # 重力
+    bounce: float = 0.5             # 跳ね返りの反発係数
     grip_strong: float = 0.75       # 吹っ飛び時の強い空気抵抗(最大速度超過時)
     grip_weak: float = 0.5          # 吹っ飛び時の弱い空気抵抗(吹っ飛び直後)
 
@@ -253,10 +254,10 @@ class KnifeBulletConst(LinerBulletConst):
 """ クナイ管理の定数 """
 @dataclass
 class KnifeManagerConst:
-    throw_time: int = 8        # 射出にかかるフレーム
-    angle_range: int = 10       # 射出角度の幅
-    interval: int = 24          # クナイ射出から次のクナイまでの間隔
-    speed: int = 20             # クナイに与える初速
+    throw_time: int = 16        # 射出にかかるフレーム
+    angle_range: int = 5        # 射出角度の幅
+    interval: int = 16          # クナイ射出から次のクナイまでの間隔
+    speed: int = 16             # クナイに与える初速
 
     reload: int = 192           # 再装填までのフレーム
     bullet_max: int = 6         # 弾の最大数
@@ -264,6 +265,43 @@ class KnifeManagerConst:
 def debug():
     CONST = EnergyBulletConst(damage=10)
     print(CONST)
+
+""" 手裏剣の定数 """
+@dataclass
+class ShurikenConst:
+    hp_max: int = 5             # 弾の耐性
+    alive_frame: int = 128      # 弾が残るフレーム
+
+    gravity: float = 1.0        # 重力
+    bounce: float = 0.9         # 跳ね返りの反発係数
+    reflection_y: int = 12      # 反射時の固定縦方向速度
+
+    no_damage_frame: int = 24   # 当たったキャラが取得する無敵フレーム
+    hit_stop: int = 16          # 当たったキャラがヒットストップするフレーム
+    shake: int = 12             # 当たったキャラのヒット振動の大きさ
+
+    hit_circles: list[Collision_Circle] = field(default_factory=list)
+
+    def __post_init__(self):
+        # 攻撃判定（相対位置、半径、ダメージ）を保存するリスト
+        self.hit_circles = [
+            Collision_Circle(Vector2(0,0), 15, 15)
+        ]
+
+""" 手裏剣管理の定数 """
+@dataclass
+class ShurikenManagerConst:
+    throw_time: int = 16                        # 射出にかかるフレーム
+    start_offset: tuple[int, int] = (0, 30)     # 射出時の出現位置
+    throw_offset: tuple[int, int] = (-60, -30)  # 射出位置
+    throw_speed_x: int = 5                      # 射出時の横方向の速度
+    throw_speed_y: int = 12                     # 射出時の縦方向の速度
+
+    interval: int = 32                          # 手裏剣射出から次の手裏剣までの間隔
+    reload: int = 320                           # 再装填フレーム
+
+    shuriken_max: int = 4                       # 手裏剣最大数
+
 
 if __name__ == '__main__':
     debug()
