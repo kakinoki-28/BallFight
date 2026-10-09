@@ -285,7 +285,7 @@ class ShurikenConst:
     def __post_init__(self):
         # 攻撃判定（相対位置、半径、ダメージ）を保存するリスト
         self.hit_circles = [
-            Collision_Circle(Vector2(0,0), 15, 15)
+            Collision_Circle(Vector2(0,0), 24, 15)
         ]
 
 """ 手裏剣管理の定数 """
@@ -294,8 +294,7 @@ class ShurikenManagerConst:
     throw_time: int = 16                        # 射出にかかるフレーム
     start_offset: tuple[int, int] = (0, 30)     # 射出時の出現位置
     throw_offset: tuple[int, int] = (-60, -30)  # 射出位置
-    throw_speed_x: int = 5                      # 射出時の横方向の速度
-    throw_speed_y: int = 12                     # 射出時の縦方向の速度
+    throw_speed: tuple[int, int] = (5, 13)      # 射出時の速度
 
     interval: int = 32                          # 手裏剣射出から次の手裏剣までの間隔
     reload: int = 320                           # 再装填フレーム

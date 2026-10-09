@@ -1309,7 +1309,7 @@ class Shuriken(GameObject):
                         # 反転処理(固定速度で反転)
                         self.speed.y = self.CONST.reflection_y
                         self.pos.y = platform.y + circle.radius
-                if foot[1] < stage.GND_HEIGHT:
+                if foot[1] <= stage.GND_HEIGHT:
                     self.speed.y = self.CONST.reflection_y
                     self.pos.y = stage.GND_HEIGHT + circle.radius
 
@@ -1386,21 +1386,20 @@ class ShurikenManager:
         # 投擲
         if self.status == "throw":
             # 投擲表現
-            start_offset = Vector2(self.CONST.start_offset)
+            # 投擲速度の法線方向まで180度下からぶん回す
             if self.throw_direction == "right":
-                throw_offset = Vector2(self.CONST.throw_offset)
+                self.throwing.pos = Vector2(self.CONST.throw_speed).normalize().rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius) + self.user.pos
             else:
-                throw_offset = Vector2(-self.CONST.throw_offset[0], self.CONST.throw_offset[1])
-            self.throwing.pos = (throw_offset-start_offset)*(self.throw_count/self.CONST.throw_time) + start_offset + self.user.pos
+                self.throwing.pos = Vector2(-self.CONST.throw_speed[0],self.CONST.throw_speed[1]).normalize().rotate(-270*self.throw_count/self.CONST.throw_time)*(self.user.radius) + self.user.pos
             self.throw_count += 1
 
             # 投げ終わりで射出
             if self.throw_count >= self.CONST.throw_time:
                 self.throw_count = 0
                 if self.throw_direction == "right":
-                    self.throwing.shoot(Vector2(self.CONST.throw_speed_x, self.CONST.throw_speed_y))
+                    self.throwing.shoot(Vector2(self.CONST.throw_speed))
                 else:
-                    self.throwing.shoot(Vector2(-self.CONST.throw_speed_x, self.CONST.throw_speed_y))
+                    self.throwing.shoot(Vector2(-self.CONST.throw_speed[0], self.CONST.throw_speed[1]))
                 self.throwing = None
                 self.status = "wait"
                 self.user.action_busy = False
@@ -1425,15 +1424,15 @@ class ShurikenManager:
             self.throwing = Shuriken(user=self.user)
             self.magazine.append(self.throwing)
             self.user.action_busy = True
-            # 射出処理
-            self.throwing.pos = Vector2(self.CONST.start_offset) + self.user.pos
             # 射出方向は左右で判断
             # Xがターゲットの方が大きいなら右
             if target.pos.x>=self.user.pos.x:
                 self.throw_direction = "right"
+                self.throwing.pos = Vector2(self.CONST.throw_speed).normalize()*(self.user.radius) + self.user.pos
             # Xがターゲットの方が小さいなら左
             else:
                 self.throw_direction = "left"
+                self.throwing.pos = Vector2(-self.CONST.throw_speed[0],self.CONST.throw_speed[1]).normalize()*(self.user.radius) + self.user.pos
 
 
 

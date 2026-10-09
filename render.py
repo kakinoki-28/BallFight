@@ -222,7 +222,7 @@ class GameRenderer:
                     # 手裏剣
                     if type(obj) == gamelogic.Shuriken:
                         # 回転させて描画
-                        angle = int((obj.alive_count/64) * 360 * 4)
+                        angle = int((obj.alive_count/64) * 360 * 3)
                         shuriken_image = pygame.transform.rotozoom(self.image_assets.bullet["shuriken"].copy(), angle, 1)
                         blit_center(self.screen, shuriken_image, (obj.pos.x, self.screen.get_height()-obj.pos.y))
                     # 速度ベクトルの描画（デバッグモード）
@@ -281,7 +281,7 @@ class GameRenderer:
                         # 投擲中なら、位置関係から回転を算出
                         if knife.shoot_wait:
                             angle = pygame.Vector2(-1,0).angle_to((knife.pos-chara.pos).rotate(90))
-                            knife_image = pygame.transform.rotozoom(self.image_assets.bullet["knife_bullet"].copy(), angle, 1)
+                            knife_image = pygame.transform.rotozoom(self.image_assets.bullet["knife_bullet"].copy(), angle, 0.7)
                         # 動作中なら、速度方向から回転を算出
                         else:
                             angle = pygame.Vector2(-1,0).angle_to(knife.speed)
@@ -296,7 +296,7 @@ class GameRenderer:
                 for shuriken in chara.shuriken.magazine:
                     if shuriken.display:
                         # 回転させて描画
-                        angle = int((shuriken.alive_count/64) * 360 * 4)
+                        angle = int((shuriken.alive_count/64) * 360 * 3)
                         shuriken_image = pygame.transform.rotozoom(self.image_assets.bullet["shuriken"].copy(), angle, 1)
                         blit_center(self.screen, shuriken_image, (shuriken.pos.x, self.screen.get_height()-shuriken.pos.y))
                         # 速度ベクトルの描画（デバッグモード）
