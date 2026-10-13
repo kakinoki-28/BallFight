@@ -278,9 +278,9 @@ class GameRenderer:
                 for knife in chara.knife.magazine:
                     if knife.display:
                         # 回転させて描画
-                        # 投擲中なら、位置関係から回転を算出
+                        # 投擲中なら、位置関係から回転を算出（放り投げて見えるようにキャラ外側へ向くように）
                         if knife.shoot_wait:
-                            angle = pygame.Vector2(-1,0).angle_to((knife.pos-chara.pos).rotate(90))
+                            angle = pygame.Vector2(-1,0).angle_to((knife.pos-chara.pos))
                             knife_image = pygame.transform.rotozoom(self.image_assets.bullet["knife_bullet"].copy(), angle, 0.7)
                         # 動作中なら、速度方向から回転を算出
                         else:

@@ -533,7 +533,6 @@ class Shield:
         for enemy in self.user.target_list:
             # 相手のオブジェクトと衝突判定
             for target in enemy.hit_check(self.pos, self.radius, anti_bullet=True):
-                print(f"Shield Hit {target.__class__.__name__} from {enemy.color}")
                 # 弾
                 if isinstance(target,LinerBullet):
                     if target.bounced:
@@ -1195,6 +1194,7 @@ class KnifeManager:
         self.target = None
         self.magazine = []
         self.throwing_knife = None      # 投擲中のクナイ
+        self.throw_direction = "right"  # 投擲方向の判定（左右）
 
         self.throw_count = 0            # 投擲の経過時間カウント
         self.interval_count = 0         # クナイ射出の間隔のカウント
@@ -1202,7 +1202,6 @@ class KnifeManager:
         self.reload_count = 0           # クナイの再装填カウント
 
     def hit_check(self, pos, r, anti_bullet=False, anti_shield=False):
-        print(f"KnifeManager hit_check: pos={pos}, r={r}, anti_bullet={anti_bullet}, anti_shield={anti_shield}")
         knife_list = []
         for knife in self.magazine:
             knife_list += knife.hit_check(pos, r, anti_bullet=anti_bullet)
@@ -1225,9 +1224,13 @@ class KnifeManager:
             self.throw_count += 1
             # 投擲表現
             if self.target.pos == self.user.pos:
-                self.throwing_knife.pos = Vector2(1,0).rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//3*2) + self.user.pos
+                self.throwing_knife.pos = Vector2(1,0).rotate(-180+180*((self.throw_count/self.CONST.throw_time)**2))*(self.user.radius) + self.user.pos
             else:
-                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize().rotate(270*self.throw_count/self.CONST.throw_time)*(self.user.radius//3*2) + self.user.pos
+                # 左右判定して必ず下から投げる
+                if self.throw_direction == "right":
+                   self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize().rotate(-180+180*((self.throw_count/self.CONST.throw_time)**2))*(self.user.radius) + self.user.pos
+                else:
+                    self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize().rotate(180-180*((self.throw_count/self.CONST.throw_time)**2))*(self.user.radius) + self.user.pos
 
             # 投げ終わりで射出
             if self.throw_count >= self.CONST.throw_time:
@@ -1262,10 +1265,18 @@ class KnifeManager:
             self.throwing_knife = KnifeBullet(user=self.user, speed=Vector2(), const=gameconst.KnifeBulletConst())
             self.magazine.append(self.throwing_knife)
             self.user.action_busy = True
-            if (self.target.pos-self.user.pos).length()!=0:
-                self.throwing_knife.pos = (self.target.pos-self.user.pos).normalize()*(self.user.radius//3*2) + self.user.pos
+            target_vector = self.target.pos-self.user.pos
+            if target_vector.length()==0:
+                self.throwing_knife.pos = Vector2(1,0).rotate(-180)*(self.user.radius) + self.user.pos
             else:
-                self.throwing_knife.pos = Vector2(1,0)*(self.user.radius//3*2) + self.user.pos
+                # 内積で左右判定
+                # 左側なら反転
+                if target_vector.dot(Vector2(1,0)) > 0:
+                    self.throwing_knife.pos = target_vector.normalize().rotate(-180)*(self.user.radius) + self.user.pos
+                    self.throw_direction = "right"
+                else:
+                    self.throwing_knife.pos = target_vector.normalize().rotate(180)*(self.user.radius) + self.user.pos
+                    self.throw_direction = "left"
 
 
 """ 手裏剣：放物線を描いて跳ね続ける弾を投げる(緑スキル2) """
