@@ -302,5 +302,13 @@ class ShurikenManagerConst:
     shuriken_max: int = 4                       # 手裏剣最大数
 
 
+class WarpConst:
+    startup_interval: int = 16                      # ポータルの設置にかかるフレーム
+    recovery_interval: int = 4                      # ワープ後の動けるまでの後隙
+    destroy_interval: int = 16                      # ポータルが消えるまでの間隔
+
+    after_warp_speed: tuple[int, int] = (0, 10)     # ワープ後の初速
+
+
 if __name__ == '__main__':
     debug()

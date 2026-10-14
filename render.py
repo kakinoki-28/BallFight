@@ -85,6 +85,7 @@ class ImageAssets:
     shield: dict[str, pygame.Surface] = field(default_factory=dict)     # シールドの画像
     melee: dict[str, pygame.Surface] = field(default_factory=dict)      # 近接攻撃の画像を保持する辞書
     bullet: dict[str, pygame.Surface] = field(default_factory=dict)     # キャラが使用する弾の画像を保持する辞書
+    skill: dict[str, pygame.Surface] = field(default_factory=dict)      # キャラが使用する弾以外のスキルの画像を保持する辞書
     effect: dict[str, pygame.Surface] = field(default_factory=dict)     # エフェクトの画像を保持する辞書
 
     def __post_init__(self):
@@ -110,6 +111,9 @@ class ImageAssets:
             "sync_bullet": load_image("sync_bullet.png").convert_alpha(),
             "knife_bullet": load_image("Knife.png").convert_alpha(),
             "shuriken": load_image("Shuriken.png").convert_alpha(),
+        }
+        self.skill = {
+            "warp": load_image("warp.png").convert_alpha()
         }
         self.effect = {
             "airjump": load_image("airjump.png").convert_alpha()
@@ -176,6 +180,25 @@ class GameRenderer:
                     else:
                         effect_image.set_alpha(255)
                 self.screen.blit(effect_image, dest=(effect.pos.x-int(effect_image.get_width()/2), self.screen.get_height()-effect.pos.y-int(effect_image.get_height()/2)))
+        
+        # キャラ後ろに描画するオブジェクトの描画
+        # スキル3:ワープ
+        for chara in game_state.characters_list:
+            if chara.color == "green":
+                if chara.portal.status != "wait":
+                    warp_image = self.image_assets.skill["warp"].copy()
+                    alpha = 255
+                    # ワープの状態に応じて回転と透明度を変化させる
+                    if chara.portal.status == "startup":
+                        ratio = chara.portal.interval_count/chara.portal.CONST.startup_interval
+                        warp_image = pygame.transform.rotozoom(warp_image, ratio*180, 1)
+                    elif chara.portal.status == "destroy":
+                        ratio = chara.portal.interval_count/chara.portal.CONST.destroy_interval
+                        alpha = 128+int(127*ratio)
+                        warp_image = pygame.transform.rotozoom(warp_image, -1*ratio*180, 1)
+                    # ワープの描画
+                    warp_image.set_alpha(alpha)
+                    blit_center(self.screen, warp_image, (chara.portal.pos.x, self.screen.get_height()-chara.portal.pos.y))
 
 
         # キャラクターの描画
@@ -302,7 +325,6 @@ class GameRenderer:
                         # 速度ベクトルの描画（デバッグモード）
                         if self.debug_mode:
                             self.draw_speed(shuriken)
-
 
         # 描画の反映
         window.blit(self.screen, (0, 0))

@@ -129,6 +129,7 @@ class Character(GameObject):
         self.double_jumped = False  # ダブルジャンプを行った後かの判定
         self.restrict_jump = False  # (ガード時など)高さ制限のある判定
         self.jump_interval = 0      # 2段ジャンプまでの間隔カウント
+        self.airmove_enable = False # 空中での動力を特別に許可するかどうか
 
         self.hp = self.CONST.hp_max
         self.combo = 0              # コンボ(ダメージ軽減)の回数
@@ -152,16 +153,17 @@ class Character(GameObject):
         # 戦闘機能
         self.shield = Shield(user=self)
         if self.color == "red":
-            # 射撃
+            # スキル
             self.energy_gun = EnergyGun(user=self)
             self.drone = DroneManager(user=self)
             self.sync_shot = SyncShooter(user=self)
-            # ハンマー攻撃
+            # 近接（ハンマー攻撃）
             self.hammer = Hammer(user=self)
         elif self.color == "green":
-            # 射撃
+            # スキル
             self.knife = KnifeManager(user=self)
             self.shuriken = ShurikenManager(user=self)
+            self.portal = WarpPortal(user=self)
 
     """ 入力(InputHandler)が更新される処理 """
     def input_update(self, new_input:InputHandler):
@@ -209,6 +211,8 @@ class Character(GameObject):
         if (new_input.skills[2]==True and self.Input.skills[2]==False):
             if self.color =="red" and (self.sync_shot.shoot_count==self.sync_shot.CONST.bullet_max or not self.action_busy):
                 self.sync_shot.shoot()
+            elif self.color == "green" and not self.action_busy:
+                self.portal.warp()
         #スキル3 KeyUp
         if (self.Input.skills[2]==True and new_input.skills[2]==False):
             pass
@@ -360,7 +364,7 @@ class Character(GameObject):
                 self.effects.append(Effect("airjump", self.pos))
             # 動力(跳ね・吹っ飛び時のみ)
             jump_height = self.pos.y-self.radius-stage.GND_HEIGHT
-            if (self.hopping and jump_height < self.CONST.hopping_height) or self.blowed:
+            if (self.hopping and jump_height < self.CONST.hopping_height) or self.blowed or self.airmove_enable:
                 if self.Input.direction.x==1 and self.speed.x<self.CONST.speed_max:
                     self.speed.x += self.CONST.air_power
                     self.speed.x = min(self.speed.x, self.CONST.speed_max)
@@ -413,6 +417,7 @@ class Character(GameObject):
         elif self.color == "green":
             self.knife.update(stage)
             self.shuriken.update(stage)
+            self.portal.update()
 
     """ くらい判定の確認をする 返り値:当たったオブジェクトのリスト """
     def hit_check(self, pos:Vector2, r:int, anti_bullet:bool=False, anti_shield:bool=False) -> list[GameObject]:
@@ -1445,6 +1450,61 @@ class ShurikenManager:
                 self.throw_direction = "left"
                 self.throwing.pos = Vector2(-self.CONST.throw_speed[0],self.CONST.throw_speed[1]).normalize()*(self.user.radius) + self.user.pos
 
+
+""" ワープ：1回目の入力でポータルを設置し、2回目の入力でポータルへ移動する。（緑スキル3） """
+class WarpPortal:
+    def __init__(self, user):
+        self.CONST = gameconst.WarpConst()
+        # 変数
+        self.user = user
+        self.pos = None
+        self.status = "wait"
+        
+        self.interval_count = 0
+
+    def update(self):
+        # インターバル処理
+        if self.interval_count > 0:
+            self.interval_count -= 1        # 設置中
+        # 各インターバル完了
+        else:
+            if self.status == "startup":
+                self.interval_count = 0
+                self.status = "ready"           # 設置完了
+                self.user.action_busy = False
+            # ワープ直後のフォロースルー
+            elif self.status == "recovery":
+                self.interval_count = 0
+                # ワープ完了処理
+                self.status = "destroy"
+                self.user.action_busy = False
+                self.interval_count = self.CONST.destroy_interval
+                # ワープ後に跳ねる
+                self.user.speed = Vector2(self.CONST.after_warp_speed)
+                self.user.airmove_enable = True        # 小さな空中動力を許可
+            # ワープ完了後のポータル消滅
+            elif self.status == "destroy":
+                self.interval_count = 0
+                # ポータル消滅処理
+                self.user.airmove_enable = False
+                self.status = "wait"            # ポータル消滅
+
+    def warp(self):
+        # 操作のインターバルが終わっているかを判定
+        if self.interval_count==0:
+            # ポータル設置
+            if self.status=="wait":
+                self.status = "startup"         # 設置中
+                self.pos = self.user.pos.copy()
+                self.user.action_busy = True
+                self.interval_count = self.CONST.startup_interval
+            # ポータルへワープ
+            elif self.status=="ready":
+                self.status = "recovery"        # ワープ直後のフォロースルー
+                self.user.pos = self.pos.copy()
+                self.user.set_stop(self.CONST.recovery_interval)
+                self.user.action_busy = True
+                self.interval_count = self.CONST.recovery_interval
 
 
 if __name__ == '__main__':
