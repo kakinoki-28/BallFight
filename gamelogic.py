@@ -164,6 +164,8 @@ class Character(GameObject):
             self.knife = KnifeManager(user=self)
             self.shuriken = ShurikenManager(user=self)
             self.portal = WarpPortal(user=self)
+            # 近接（刀攻撃）
+            self.katana = Katana(user=self)
 
     """ 入力(InputHandler)が更新される処理 """
     def input_update(self, new_input:InputHandler):
@@ -175,6 +177,8 @@ class Character(GameObject):
         if (new_input.attack==True and self.Input.attack==False) and (not self.action_busy or self.shield.status=="recovery"):
             if self.color =="red":
                 self.hammer.start()
+            elif self.color == "green":
+                self.katana.start()
         #近接攻撃 KeyUp
         if (self.Input.attack==True and new_input.attack==False) and (not self.action_busy or self.shield.status=="recovery"):
             pass
@@ -415,6 +419,7 @@ class Character(GameObject):
             self.drone.update(stage)
             self.sync_shot.update(stage)
         elif self.color == "green":
+            self.katana.update()
             self.knife.update(stage)
             self.shuriken.update(stage)
             self.portal.update()
@@ -713,13 +718,10 @@ class LinerBullet(GameObject):
                             self.hitwait_count = int(self.CONST.hit_stop/2)
                     self.active = False
 
-
-""" 赤の近接攻撃（ハンマー）ダメージが高く、シールドを破壊する """
-class Hammer:
+""" 近接攻撃の基底クラス：シールドを破壊する """
+class Melee:
     def __init__(self, user):
-        # 定数
-        self.CONST = gameconst.HammerConst()
-
+        # 定数(self.CONST)は各自で設定
         # 変数
         self.active = False
         self.motion_count = -1
@@ -821,6 +823,14 @@ class Hammer:
                                 break
                         # ヒットストップ処理
                         self.user.set_stop(self.CONST.self_obj_stop, self.CONST.self_obj_shake)
+
+
+""" 赤の近接攻撃（ハンマー）大きな隙があるが、ダメージが高い"""
+class Hammer(Melee):
+    def __init__(self, user):
+        super().__init__(user)
+        self.CONST = gameconst.HammerConst()
+
 
 
 """ 溜めるとダメージ・速度・精度が上がる直進弾を撃つエネルギー銃(赤スキル1) """
@@ -1170,6 +1180,13 @@ class SyncShooter:
                 self.shoot_count = 0
         for bullet in self.magazine:
             bullet.update(stage)
+
+
+""" 緑の近接攻撃（刀）ダメージ範囲が広く、シールドを破壊する """
+class Katana(Melee):
+    def __init__(self, user):
+        super().__init__(user)
+        self.CONST = gameconst.KatanaConst()
 
 
 """ クナイ：高速で直線方向に進むクナイを投げなげる(緑スキル1) """

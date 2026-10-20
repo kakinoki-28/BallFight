@@ -103,7 +103,8 @@ class ImageAssets:
             "default": load_image("shield.png").convert_alpha()
         }
         self.melee = {
-            "hammer": load_image("hammer.png").convert_alpha()
+            "hammer": load_image("hammer.png").convert_alpha(),
+            "katana": load_image("katana.png").convert_alpha()
         }
         self.bullet = {
             "liner_bullet": load_image("liner_bullet.png").convert_alpha(),
@@ -297,6 +298,28 @@ class GameRenderer:
                             self.draw_speed(bullet)
             # 緑キャラの描画
             elif chara.color == "green":
+                # 近接攻撃の描画
+                if chara.katana.active:
+                    if chara.katana.direction == "right":
+                        katana_image = self.image_assets.melee["katana"].copy()
+                    else:
+                        katana_image = pygame.transform.flip(self.image_assets.melee["katana"].copy(), True, False)
+                    # モーション都合での反転処理
+                    if chara.katana.CONST.frame_data[chara.katana.motion_count][2]:
+                        katana_image = pygame.transform.flip(katana_image, True, False)
+
+                    if chara.katana.angle != 0:
+                        katana_image = pygame.transform.rotozoom(katana_image, -chara.katana.angle, 1)
+                    root_pos = chara.pos+chara.katana.offset
+                    if chara.katana.motion == "attack":
+                        if chara.katana.direction == "left":
+                            root_pos.x -= (1-chara.katana.distance_ratio)*(chara.katana.offset.x + chara.katana.CONST.frame_data[chara.katana.motion_count-1][0].x)
+                        else:
+                            root_pos.x -= (1-chara.katana.distance_ratio)*(chara.katana.offset.x - chara.katana.CONST.frame_data[chara.katana.motion_count-1][0].x)
+                        root_pos.y -= (1-chara.katana.distance_ratio)*(chara.katana.offset.y - chara.katana.CONST.frame_data[chara.katana.motion_count-1][0].y)
+                    katana_pos = round( root_pos+pygame.Vector2(0, katana_image.get_height()//2).rotate(-chara.katana.angle) )
+                    
+                    blit_center(self.screen, katana_image, (katana_pos.x, self.screen.get_height()-katana_pos.y))
                 # スキル1:クナイ
                 for knife in chara.knife.magazine:
                     if knife.display:

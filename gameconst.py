@@ -71,6 +71,7 @@ class LinerBulletConst:
         # 攻撃判定（相対位置、半径、ダメージ）を保存するリスト
         self.hit_circles = [ Collision_Circle(Vector2(0,0), 10, self.damage) ]
 
+# 赤キャラ
 
 """ ハンマー(赤の近接攻撃)の定数 """
 @dataclass
@@ -114,7 +115,7 @@ class HammerConst:
         self.load_file()
 
     def load_file(self):
-        with open("Hammer_data.txt") as f:
+        with open("motion/Hammer_data.txt") as f:
             self.startup, self.attacking, self.recovery = [int(value) for value in f.readline().rstrip('\n').split(',')]
             for line in f:
                 value_list = [int(value) for value in line.rstrip('\n').split(',')]
@@ -227,6 +228,59 @@ class SyncShooterConst:
     reload: int = 320           # 再装填までのフレーム
     bullet_max: int = 4         # 弾の最大数（+1回目の入力で発射）
 
+# 緑キャラ
+
+""" 刀(緑の近接攻撃)の定数 """
+@dataclass
+class KatanaConst:
+    interval: int = 16              # 次の入力が受け付けられるまでの間隔（フレーム）
+
+    no_damage_frame: int = 96       # 受けたキャラが獲得する無敵フレーム
+    after_blow_frame: int = 8       # 受けたキャラが吹っ飛び後空気抵抗が減少するフレーム
+
+    """ キャラクターに対しての攻撃はダメージの倍率に応じてストップフレームが変動（柄ヒットは半分）
+        ただし、ダメージが減少しても有利フレームが少なくならないように固定ストップフレームを設定 """
+    hit_stop: int = 10              # 被攻撃時にヒットストップするフレーム
+    self_hit_stop: int = 8          # 攻撃時にヒットストップするフレーム
+    hit_const_stop: int = 2         # 被攻撃時に固定で追加ストップするフレーム
+    shake: int = 40                 # 被攻撃時にストップ時振動する大きさ
+    self_shake: int = 10            # 攻撃時にストップ時振動する大きさ
+
+    shield_stop: int = 8            # シールド被攻撃時にヒットストップするフレーム
+    self_shield_stop: int = 8       # シールド攻撃時にヒットストップするフレーム
+    shield_const_stop: int = 4      # シールド被攻撃時に固定で追加ストップするフレーム
+    shield_shake: int = 20          # シールド被攻撃時にストップ時振動する大きさ
+    shield_self_shake: int = 3      # シールド攻撃時にストップ時振動する大きさ
+
+    self_obj_stop: int = 6          # 他オブジェクトに当たった際のヒットストップ(固定)
+    self_obj_shake: int = 3         # 他オブジェクトに当たった際の振動する大きさ
+
+    blow_vector: Vector2 = field(default_factory=lambda: Vector2(23, 15))      # 受けたキャラが吹っ飛ばされる速度
+
+
+    hit_circles: list[Collision_Circle] = field(default_factory=list)
+
+    # フレーム毎のデータを保存するリスト
+    frame_data: list[tuple[Vector2, int]] = field(default_factory=list)
+
+    def __post_init__(self):
+        # 攻撃判定（相対位置、半径、ダメージ）を保存するリスト
+        self.hit_circles = [
+            Collision_Circle(Vector2(0,45), 15, 40),
+            Collision_Circle(Vector2(0,65), 15, 40),
+            Collision_Circle(Vector2(0,85), 15, 40),
+            Collision_Circle(Vector2(0,105), 15, 40),
+            Collision_Circle(Vector2(0,125), 15, 40),
+            Collision_Circle(Vector2(0,145), 15, 40)
+        ]
+        self.load_file()
+
+    def load_file(self):
+        with open("motion/Katana_data.txt") as f:
+            self.startup, self.attacking, self.recovery = [int(value) for value in f.readline().rstrip('\n').split(',')]
+            for line in f:
+                value_list = [int(value) for value in line.rstrip('\n').split(',')]
+                self.frame_data.append( (Vector2(value_list[0],value_list[1]), value_list[2], bool(value_list[3])) )
 
 """ クナイの「弾」の定数 """
 @dataclass
