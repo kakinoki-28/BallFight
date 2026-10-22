@@ -12,7 +12,7 @@ class GameManeger:
 
     def __init__(self):
         self.run = True
-        def dummy(frame):
+        def dummy():
             pass
         self.update_func = dummy    # ゲームが更新される際に呼び出される関数(通信等)
         self.frame_rate = 0         # フレームレートの保存
@@ -24,6 +24,12 @@ class GameManeger:
     """ ゲームの初期化 """
     def init_game(self):
         self.state.init_game()
+
+    """ ゲームのリスタート """
+    def try_restart(self):
+        if not self.state.active:
+            self.state.init_game()
+            self.renderer.ko_animator.reset()
 
     """ キャラの追加 """
     def add_character(self, color, id):
@@ -52,8 +58,14 @@ class GameManeger:
         while self.run:
             start = perf_counter()
 
-            frame = self.state.update()     # ゲーム状況を更新
-            self.update_func(frame)         # フレーム毎実行処理
+            if self.state.active:
+                self.state.update()     # ゲーム状況を更新
+                self.update_func()      # フレーム毎実行処理
+                # ゲーム終了判定
+                if not self.state.active:
+                    self.renderer.ko_animation_start()    # K.O.演出開始
+
+            self.renderer.update(self.FRAME_LATENCY)    # 描画時に必要な更新
 
             # フレーム計測
             frame_time[1] = perf_counter()

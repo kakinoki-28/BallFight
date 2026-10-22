@@ -10,6 +10,8 @@ import pygame.gfxdraw
 IMAGE_FOLDER = "images"
 
 SILVER = (192, 192, 192)
+RED = (255, 0, 0)
+WHITE = (255, 255, 255)
 
 def load_image(file):
     # 画像読み込み用
@@ -125,12 +127,120 @@ def blit_center(dest, source, pos):
     rect = source.get_rect(center=pos)
     dest.blit(source, rect)
 
+
+
+
+class KOAnimation:
+    def __init__(self, WIDTH, HEIGHT):
+        self.status = "idle"
+        self.elapsed = 0.0
+
+        self.screen_width = WIDTH
+        self.screen_height = HEIGHT
+        
+        self.k_duration = 0.5
+        self.o_duration = 0.65
+
+        self.font = pygame.font.Font(None, 150)
+        self.restart_font = pygame.font.Font(None, 36)
+
+        self.k_surface = self.font.render("K.", True, RED)
+        self.o_surface = self.font.render("O.", True, RED)
+
+        # K.の目標位置
+        self.target_k_x = (WIDTH - self.k_surface.get_width() - self.o_surface.get_width()) // 2
+        # O.の目標位置
+        self.target_o_x = self.target_k_x + self.k_surface.get_width()
+
+        self.target_y = ( HEIGHT - self.k_surface.get_height() ) // 2
+
+        self.restart_info = self.restart_font.render( "restart to R key", True, WHITE )
+
+    def start(self):
+        # 二重に演出を開始しない
+        if self.status != "idle":
+            return
+
+        self.status = "K_enter"
+        self.elapsed = 0.0
+
+    def reset(self):
+        self.status = "idle"
+        self.elapsed = 0.0
+
+    def update(self, frame_latency):
+        if self.status == "idle":
+            return
+
+        self.elapsed += frame_latency
+
+        if self.status == "K_enter":
+            if self.elapsed >= self.k_duration:
+                self.status = "O_enter"
+                self.elapsed = 0.0
+
+        elif self.status == "O_enter":
+            if self.elapsed >= self.o_duration:
+                self.status = "wait_restart"
+                self.elapsed = 0.0
+
+    def draw(self, screen):
+        """0～1の値を使って、最後にゆっくり止まる動きを作る"""
+        def curve(t):
+            return 1.0 - (1.0 - t) ** 3
+        
+        if self.status == "idle":
+            return
+
+        # K.が左から中央へ移動
+        if self.status == "K_enter":
+            t = min(self.elapsed / self.k_duration, 1.0)
+            t = curve(t)
+
+            start_x = -self.k_surface.get_width()
+            x = start_x + ( self.target_k_x - start_x ) * t
+
+            screen.blit( self.k_surface, (int(x), self.target_y) )
+
+        # K.を残したままO.が右から中央へ移動
+        elif self.status == "O_enter":
+            screen.blit(
+                self.k_surface,
+                (self.target_k_x, self.target_y)
+            )
+    
+            t = min(self.elapsed / self.o_duration, 1.0)
+            t = curve(t)
+
+            start_x = self.screen_width
+            x = start_x + ( self.target_o_x - start_x ) * t
+
+            screen.blit(
+                self.o_surface, (int(x), self.target_y)
+            )
+
+        # 演出完了後はK.O.と点滅する案内を表示
+        elif self.status == "wait_restart":
+            screen.blit( self.k_surface, (self.target_k_x, self.target_y) )
+            screen.blit( self.o_surface, (self.target_o_x, self.target_y) )
+
+            # 約1秒周期で点滅
+            if int(self.elapsed * 2) % 2 == 0:
+                text_rect = self.restart_info.get_rect(
+                    midtop=( self.screen_width // 2, self.target_y + self.k_surface.get_height() + 15 )                    
+                )
+                
+                screen.blit(self.restart_info, text_rect)
+
+
 class GameRenderer:
     def __init__(self):
         self.screen = pygame.Surface((gamelogic.Stage.WIDTH, gamelogic.Stage.HEIGHT)).convert_alpha() 
         self.image_assets = ImageAssets()
         self.HUD_LIST = {}
         self.debug_mode = False
+
+        self.ko_animator = KOAnimation(gamelogic.Stage.WIDTH, gamelogic.Stage.HEIGHT)
 
     def debug_toggle(self):
         self.debug_mode = not self.debug_mode
@@ -144,6 +254,13 @@ class GameRenderer:
             y_only = pygame.Vector2(0, target.speed.y)
             draw_arrow(self.screen, (192,192,192,192), pygame.Vector2(target.pos.x, self.screen.get_height()-target.pos.y), x_only*4, 5)
             draw_arrow(self.screen, (192,192,192,192), pygame.Vector2(target.pos.x, self.screen.get_height()-target.pos.y), y_only*4, 5)
+
+    def ko_animation_start(self):
+        self.ko_animator.start()
+
+    """ ゲームの描画更新毎に必要な処理を行う関数 """
+    def update(self, frame_latency):
+        self.ko_animator.update(frame_latency)
 
     """ 毎フレーム描画する関数 """
     def render(self, window, tick, game_state):
@@ -349,5 +466,8 @@ class GameRenderer:
                         if self.debug_mode:
                             self.draw_speed(shuriken)
 
+        # KO演出の描画
+        if self.ko_animator.status != "idle":
+            self.ko_animator.draw(self.screen)
         # 描画の反映
         window.blit(self.screen, (0, 0))

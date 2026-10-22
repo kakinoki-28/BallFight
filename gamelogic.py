@@ -30,9 +30,25 @@ class GameState:
     def __init__(self):
         self.stage = Stage()
         self.characters_list = []
+        self.active = False
         self.init_game()
 
     def init_game(self):
+        # キャラクターの初期化
+        if len(self.characters_list) > 0:
+            # 初期化リストへ登録
+            temp_list = []
+            for character in self.characters_list[:]:
+                temp_list.append((character.color, character.id))
+                self.remove_character(character.id)
+            print(f"character list:{temp_list}")
+
+            for color, id in temp_list:
+                self.add_character(color, id)
+                if color == "red":
+                    self.characters_list[-1].pos = Vector2(Stage.WIDTH*3/4, Stage.GND_HEIGHT+self.characters_list[-1].radius*2)
+                print(f"character pos:{self.characters_list[-1].pos}")
+        self.active = True
         self.frame_number = 0
 
     """ キャラの追加 """
@@ -66,6 +82,13 @@ class GameState:
             character.update(self.stage)
         for character in self.characters_list:
             character.objects_update(self.stage)
+
+        # キャラクターのHPが0以下になった場合、ゲーム終了
+        for character in self.characters_list:
+            if character.hp <= 0:
+                self.active = False
+                break
+                
 
 
 """ ゲームステージ全体の情報の管理するクラス """

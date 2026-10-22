@@ -120,6 +120,11 @@ class MainApp:
                     print(f"Debug mode :{self.game_mgr.renderer.debug_mode}")
                     if ROLLBACK_TEST:
                         self.rollback_mgr.renderer.debug_toggle()
+                # リスタート処理
+                if event.key == pg.K_r:
+                    self.game_mgr.try_restart()
+                    self.rollback_inputs = [[] for _ in range(NORMAL_FPS*60*60)]
+                    print("Game restarted!")
                 input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keydown(event.key)
             elif event.type == pg.KEYUP:
                 input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keyup(event.key)
