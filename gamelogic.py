@@ -36,18 +36,20 @@ class GameState:
     def init_game(self):
         # キャラクターの初期化
         if len(self.characters_list) > 0:
-            # 初期化リストへ登録
+            # 現在の情報を記録しつつキャラクターを削除
             temp_list = []
             for character in self.characters_list[:]:
                 temp_list.append((character.color, character.id))
                 self.remove_character(character.id)
-            print(f"character list:{temp_list}")
-
+            # キャラクターを追加
             for color, id in temp_list:
                 self.add_character(color, id)
-                if color == "red":
-                    self.characters_list[-1].pos = Vector2(Stage.WIDTH*3/4, Stage.GND_HEIGHT+self.characters_list[-1].radius*2)
-                print(f"character pos:{self.characters_list[-1].pos}")
+            # キャラクターの初期位置を設定
+            for i, character in enumerate(self.characters_list):
+                character.pos = Vector2(
+                    Stage.WIDTH/len(self.characters_list)*(i+1/2),
+                    Stage.GND_HEIGHT+character.radius*2
+                )
         self.active = True
         self.frame_number = 0
 
