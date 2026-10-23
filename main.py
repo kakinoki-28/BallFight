@@ -34,6 +34,7 @@ class MainApp:
         self.rollback_mgr = RollBackManager()
         self.rollback_inputs = [[] for _ in range(NORMAL_FPS*60*60)]
         self.key_chara_id = self.add_character("green")
+        #self.key_chara_id = None
 
         self.polling_clock = pg.time.Clock()
         self.display_clock = pg.time.Clock()
@@ -96,7 +97,12 @@ class MainApp:
             elif event.type == pg.JOYDEVICEADDED:
                 joy = pg.joystick.Joystick(event.device_index)
                 self.joysticks[joy.get_instance_id()] = joy
-                self.joy_chara_map[joy.get_instance_id()] = self.add_character("red")
+                # コントローラー接続時にキャラクターを追加する
+                if len(self.joy_chara_map)%2 == 0:
+                    color = "red"
+                else:
+                    color = "green"
+                self.joy_chara_map[joy.get_instance_id()] = self.add_character(color)
                 self.chara_input_map[self.joy_chara_map[joy.get_instance_id()]].connect_joy(joy.get_numbuttons(), joy.get_numaxes(), joy.get_numhats())
                 print(f"{joy.get_name()} connencted!")
             elif event.type == pg.JOYDEVICEREMOVED:
@@ -125,9 +131,12 @@ class MainApp:
                     self.game_mgr.try_restart()
                     self.rollback_inputs = [[] for _ in range(NORMAL_FPS*60*60)]
                     print("Game restarted!")
-                input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keydown(event.key)
+                # キーからのゲーム入力受付
+                if self.key_chara_id is not None:
+                    input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keydown(event.key)
             elif event.type == pg.KEYUP:
-                input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keyup(event.key)
+                if self.key_chara_id is not None:
+                    input_changed[self.key_chara_id] |= self.chara_input_map[self.key_chara_id].keyup(event.key)
             elif event.type == pg.JOYBUTTONDOWN:
                 input_changed[self.joy_chara_map[event.instance_id]] |= self.chara_input_map[self.joy_chara_map[event.instance_id]].buttondown(event.button)
             elif event.type == pg.JOYBUTTONUP:
