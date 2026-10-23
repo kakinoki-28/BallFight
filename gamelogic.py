@@ -479,13 +479,16 @@ class Character(GameObject):
             self.hp -= damage
             self.blowed = True
             self.combo += 1
-            if self.color=="red":
-                self.hammer.reset()
         # コンボ
         elif self.combo_count>0:
             print(f"{self.combo} Combo Damage : {damage}→{int(damage/(self.combo+1))}")
             self.hp -= int(damage/(self.combo+1))
             self.combo += 1
+        # 近接攻撃のリセット
+        if self.color=="red":
+            self.hammer.reset()
+        elif self.color=="green":
+            self.katana.reset()
 
 
 # エフェクト
