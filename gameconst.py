@@ -149,7 +149,7 @@ class EnergyGunConst:
     startup: int = 12           # ボタンを押してから最短で弾が発射できるまでのフレーム
     charge: int = 24            # 最大チャージまでのフレーム
     interval: int = 16          # 弾が出る最短のフレーム
-    reload: int = 96            # 弾の装填にかかるフレーム
+    reload: int = 192            # 弾の装填にかかるフレーム
 
     bullet_max: int = 7         # 1マガジンで撃てる最大の弾
 
@@ -176,7 +176,7 @@ class DroneConst:
     speed_max: int = 10         # 追尾時の最大速度　及び　射出時の固定速度
 
     no_damage_frame: int = 24   # 当たったキャラが取得する無敵フレーム
-    hit_stop: int = 8           # 当たったキャラがヒットストップするフレーム
+    hit_stop: int = 12          # 当たったキャラがヒットストップするフレーム
     shake: int = 5              # 当たったキャラのヒット振動の大きさ
 
     hit_circles: list[Collision_Circle] = field(default_factory=list)
@@ -193,9 +193,9 @@ class DroneManagerConst:
     throw_time: int = 24        # 射出にかかるフレーム
     angle_range: int = 25       # 射出角度の幅
     interval: int = 24          # ドローン射出から次のドローンまでの間隔
-    reload: int = 320           # 再装填フレーム
+    reload: int = 640           # 再装填フレーム
 
-    drone_max: int = 4          # ドローン最大数
+    bullet_max: int = 4         # ドローン最大数
 
 
 """ 時止め弾の「弾」の定数 """
@@ -209,7 +209,7 @@ class SyncBulletConst(LinerBulletConst):
 
     combo_interval: int = 8             # コンボ判定(ダメージ減算)が続くフレーム(0でコンボ無効)
     no_damage_frame: int = 16           # 当たったキャラが獲得する無敵フレーム
-    hit_stop: int = 4                   # ヒットストップするフレーム
+    hit_stop: int = 8                   # ヒットストップするフレーム
     shake: int = 12                     # ヒットストップ時振動する大きさ
     is_include_ratio: bool = True       # フレーム・振動計算時にダメージ量による変動するか
     damage: int = 20                    # 弾が与えるダメージ
@@ -225,7 +225,7 @@ class SyncBulletConst(LinerBulletConst):
 """ 時止め弾管理の定数 """
 @dataclass
 class SyncShooterConst:
-    reload: int = 320           # 再装填までのフレーム
+    reload: int = 512           # 再装填までのフレーム
     bullet_max: int = 4         # 弾の最大数（+1回目の入力で発射）
 
 # 緑キャラ
@@ -291,7 +291,7 @@ class KnifeBulletConst(LinerBulletConst):
 
     combo_interval: int = 0             # コンボ判定(ダメージ減算)が続くフレーム(0でコンボ無効)
     no_damage_frame: int = 16           # 当たったキャラが獲得する無敵フレーム
-    hit_stop: int = 16                  # ヒットストップするフレーム
+    hit_stop: int = 20                  # ヒットストップするフレーム
     shake: int = 16                     # ヒットストップ時振動する大きさ
     is_include_ratio: bool = True       # フレーム・振動計算時にダメージ量による変動するか
     damage: int = 20                    # 弾が与えるダメージ
@@ -308,12 +308,12 @@ class KnifeBulletConst(LinerBulletConst):
 """ クナイ管理の定数 """
 @dataclass
 class KnifeManagerConst:
-    throw_time: int = 16        # 射出にかかるフレーム
-    angle_range: int = 5        # 射出角度の幅
+    throw_time: int = 12        # 射出にかかるフレーム
+    angle_range: int = 3        # 射出角度の幅
     interval: int = 16          # クナイ射出から次のクナイまでの間隔
     speed: int = 16             # クナイに与える初速
 
-    reload: int = 192           # 再装填までのフレーム
+    reload: int = 384           # 再装填までのフレーム
     bullet_max: int = 6         # 弾の最大数
 
 def debug():
@@ -324,14 +324,14 @@ def debug():
 @dataclass
 class ShurikenConst:
     hp_max: int = 5             # 弾の耐性
-    alive_frame: int = 128      # 弾が残るフレーム
+    alive_frame: int = 160      # 弾が残るフレーム
 
     gravity: float = 1.0        # 重力
     bounce: float = 0.9         # 跳ね返りの反発係数
     reflection_y: int = 12      # 反射時の固定縦方向速度
 
-    no_damage_frame: int = 24   # 当たったキャラが取得する無敵フレーム
-    hit_stop: int = 16          # 当たったキャラがヒットストップするフレーム
+    no_damage_frame: int = 16   # 当たったキャラが取得する無敵フレーム
+    hit_stop: int = 24          # 当たったキャラがヒットストップするフレーム
     shake: int = 12             # 当たったキャラのヒット振動の大きさ
 
     hit_circles: list[Collision_Circle] = field(default_factory=list)
@@ -351,9 +351,9 @@ class ShurikenManagerConst:
     throw_speed: tuple[int, int] = (5, 13)      # 射出時の速度
 
     interval: int = 32                          # 手裏剣射出から次の手裏剣までの間隔
-    reload: int = 320                           # 再装填フレーム
+    reload: int = 448                           # 再装填フレーム
 
-    shuriken_max: int = 4                       # 手裏剣最大数
+    bullet_max: int = 4                         # 手裏剣最大数
 
 
 class WarpConst:
