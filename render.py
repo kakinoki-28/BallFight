@@ -282,8 +282,9 @@ class GameRenderer:
             x = game_state.stage.WIDTH/TOTAL_PLAYER*(i+1/2)
             y = game_state.stage.HEIGHT/10
             for chara in [_ for _ in game_state.characters_list if _.id == chara_id]:
-                hud.update(tick, chara.hp)
+                hud.update(tick, chara)
                 self.screen.blit(hud.surface,dest=(x-hud.surface.get_width()/2,y-hud.surface.get_height()/2))
+        
 
         
         # エフェクト表示

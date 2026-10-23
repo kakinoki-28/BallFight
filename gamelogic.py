@@ -190,6 +190,12 @@ class Character(GameObject):
             # 近接（刀攻撃）
             self.katana = Katana(user=self)
 
+    def get_skills(self):
+        if self.color == "red":
+            return [self.energy_gun, self.drone, self.sync_shot]
+        elif self.color == "green":
+            return [self.knife, self.shuriken, self.portal]
+
     """ 入力(InputHandler)が更新される処理 """
     def input_update(self, new_input:InputHandler):
         # ジャンプ
@@ -861,6 +867,7 @@ class EnergyGun:
     def __init__(self, user):
         # 定数
         self.CONST = gameconst.EnergyGunConst()
+        self.name = "energy_gun"
 
         # 変数
         self.status = "wait"
@@ -1065,6 +1072,7 @@ class Drone(GameObject):
 class DroneManager:
     def __init__(self, user):
         self.CONST = gameconst.DroneManagerConst
+        self.name = "drone"
         # 変数
         self.status = "wait"
         self.user = user
@@ -1109,7 +1117,7 @@ class DroneManager:
                 self.user.action_busy = False
                 self.interval_count = self.CONST.interval
                 self.shoot_count += 1
-                if self.shoot_count >= self.CONST.drone_max:
+                if self.shoot_count >= self.CONST.bullet_max:
                     self.shoot_count = 0
                     self.reload_count = self.CONST.reload
         elif self.interval_count>0:
@@ -1156,6 +1164,7 @@ class SyncBullet(LinerBullet):
 class SyncShooter:
     def __init__(self, user):
         self.CONST = gameconst.SyncShooterConst()
+        self.name = "sync_shot"
         # 変数
         self.user = user
         self.target = None
@@ -1233,6 +1242,7 @@ class KnifeBullet(LinerBullet):
 class KnifeManager:
     def __init__(self, user):
         self.CONST = gameconst.KnifeManagerConst
+        self.name = "knife"
         # 変数
         self.status = "wait"
         self.user = user
@@ -1409,6 +1419,7 @@ class Shuriken(GameObject):
 class ShurikenManager:
     def __init__(self, user):
         self.CONST = gameconst.ShurikenManagerConst
+        self.name = "shuriken"
         # 変数
         self.status = "wait"
         self.user = user
@@ -1461,7 +1472,7 @@ class ShurikenManager:
                 self.user.action_busy = False
                 self.interval_count = self.CONST.interval
                 self.shoot_count += 1
-                if self.shoot_count >= self.CONST.shuriken_max:
+                if self.shoot_count >= self.CONST.bullet_max:
                     self.shoot_count = 0
                     self.reload_count = self.CONST.reload
         elif self.interval_count>0:
@@ -1495,6 +1506,7 @@ class ShurikenManager:
 class WarpPortal:
     def __init__(self, user):
         self.CONST = gameconst.WarpConst()
+        self.name = "warp"
         # 変数
         self.user = user
         self.pos = None

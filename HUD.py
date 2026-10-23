@@ -1,5 +1,8 @@
 import pygame, os
 
+# ディレクトリパス
+img_folder = "images"
+
 def load_image(file):
     # 画像読み込み用
     file = os.path.join(img_folder, file)
@@ -8,6 +11,111 @@ def load_image(file):
     except:
         raise SystemExit('Could not load image "%s" %s' % (file, pygame.get_error()))
     return surface
+
+""" スキル用画像Surfaceを保持する辞書 """
+skill_icons = {
+    "energy_gun": load_image("liner_bullet.png"),
+    "drone": load_image("drone.png"),
+    "sync_shot": load_image("sync_bullet.png"),
+    "knife": load_image("Knife.png"),
+    "shuriken": load_image("Shuriken.png"),
+    "warp": load_image("warp.png")
+}
+
+class SkillHUD:
+    WIDTH = 240
+    SLOT_GAP = 4
+    SLOT_H = 30
+
+    def __init__(self, x, y, icon_images=None):
+        self.x = x
+        self.y = y
+        self.small_font = pygame.font.SysFont("consolas", 10, bold=True)
+        #self.font = pygame.font.SysFont("consolas", 17, bold=True)
+        self.font = pygame.font.Font(os.path.join("fonts","Makinas-4-Flat.otf"), 17)
+
+    def draw(self, surface, character):
+        skills = character.get_skills()
+
+        # 240px幅に3つのスロットを配置
+        slot_w = ( self.WIDTH - self.SLOT_GAP * (len(skills) - 1) ) // len(skills)
+
+        for i, skill in enumerate(skills):
+            rect = pygame.Rect( self.x + i * (slot_w + self.SLOT_GAP), self.y, slot_w, self.SLOT_H)
+            self._draw_slot(surface, rect, skill, i)
+
+    def _draw_slot(self, surface, rect, skill, index):
+        pygame.draw.rect( surface, DARK_GRAY, rect, border_radius=5 )
+
+        icon_rect = pygame.Rect( rect.x + 4, rect.y + 4, 20, 20 )
+        if skill.name in skill_icons:
+            image = pygame.transform.smoothscale(skill_icons.get(skill.name), (icon_rect.width, icon_rect.height))
+            surface.blit(image, icon_rect)
+        else:
+            None  # スキルアイコンが見つからない場合は何も描画しない
+
+        # スキルがワープの場合は残弾などは表示しない
+        if skill.name == "warp":
+            ready = self.small_font.render("READY", True, GREEN)
+            surface.blit(
+                ready,
+                (rect.right - ready.get_width() - 4, rect.y + 2)
+            )
+            return
+
+        # 残弾数
+        ammo_text = self.font.render(
+            f"{skill.shoot_count}/{skill.CONST.bullet_max}", True, WHITE
+        )
+        surface.blit(ammo_text, (rect.x + 35, rect.y + 10))
+
+        # リロード演出
+        if skill.reload_count > 0:
+            self._draw_reload(surface, rect, skill)
+
+        # 使用可能状態
+        else:
+            if not hasattr(skill, 'interval_count') or skill.interval_count <= 0:
+                ready = self.small_font.render("READY", True, GREEN)
+                surface.blit(
+                    ready,
+                    (rect.right - ready.get_width() - 4, rect.y + 2)
+                )
+
+
+    def _draw_reload(self, surface, rect, skill):
+        # アイコン・スロット全体を暗くする
+        overlay = pygame.Surface(
+            (rect.width, rect.height), pygame.SRCALPHA
+        )
+        overlay.fill((0, 0, 0, 192))
+        surface.blit(overlay, rect.topleft)
+
+        # 下端のリロード進捗バー
+        progress = 1.0 - skill.reload_count/skill.CONST.reload
+        progress = max(0.0, min(1.0, progress))
+
+        bar_rect = pygame.Rect(rect.x + 4, rect.bottom - 7, rect.width - 8, 3)
+        pygame.draw.rect(surface, (70, 74, 86), bar_rect, border_radius=2)
+        fill_rect = bar_rect.copy()
+        fill_rect.width = int(bar_rect.width * progress)
+
+        # リロード進捗バーを描画
+        if fill_rect.width > 0:
+            pygame.draw.rect(surface, YELLOW, fill_rect, border_radius=2)
+
+        # 残り時間
+        remaining = skill.reload_count/64
+        time_text = self.font.render(
+            f"{remaining:.1f}s", True, YELLOW
+        )
+        surface.blit(
+            time_text,
+            time_text.get_rect(center=(rect.centerx, rect.y + 12))
+        )
+
+
+
 
 class HP_Manager:
     def __init__(self, hp=200):
@@ -63,7 +171,7 @@ class HP_Manager:
 
 class Enemy_HUD(HP_Manager):
     WIDTH = 240
-    HEIGHT = 90
+    HEIGHT = 90 + 40
     def __init__(self, color="red"):
         super().__init__()
         self.color = color
@@ -71,6 +179,7 @@ class Enemy_HUD(HP_Manager):
         self.surface = pygame.Surface((Enemy_HUD.WIDTH, Enemy_HUD.HEIGHT), flags = pygame.SRCALPHA).convert_alpha()
         self.back_image = load_image("enemy_hud.png").convert_alpha()
         self.change_color(color=color)
+        self.skill_hud = SkillHUD(x=0, y=Enemy_HUD.HEIGHT-40)
 
     def change_color(self, color):
         # キャラクターアイコン
@@ -78,7 +187,7 @@ class Enemy_HUD(HP_Manager):
         # HPバー
         self.hpbar_image = load_image(f"hpbar_{color}.png").convert_alpha()
 
-    def make_surface(self):
+    def make_surface(self, character):
         self.surface.fill((0,0,0,0))
         self.surface.blit(self.back_image, dest=(0,0))
 
@@ -97,11 +206,13 @@ class Enemy_HUD(HP_Manager):
             hp_dec_image.fill((0,144,144,0), special_flags = pygame.BLEND_RGBA_ADD)
             hp_dec_image.set_alpha(192)
             self.surface.blit(hp_dec_image,dest=(60+int(160*self.HP/self.MAX_HP), 49), area=(0,0,int(160*(self.HP_level-self.HP)/self.MAX_HP),20))
+        # スキルHUD表示
+        self.skill_hud.draw(self.surface, character)
 
-    def update(self, tick, hp):
-        self.HP = hp
+    def update(self, tick, character):
+        self.HP = character.hp
         super().update(tick)
-        self.make_surface()
+        self.make_surface(character)
 
 
 class Ally_HUD(HP_Manager):
@@ -153,13 +264,15 @@ HEIGHT = 720
 WHITE = (255,255,255)
 LIGHT_GRAY = (192,192,192)
 GRAY = (160,160,160)
+DARK_GRAY = (64,64,64)
 GRAY_224 = (224,224,224)
 RED = (255,0,0)
 GREEN = (32,224,64)
 BLACK = (0,0,0)
 CRIMSON = (220,20,60)
-# ディレクトリパス
-img_folder = "images"
+YELLOW = (245, 190, 75)
+MUTED_BG = (155, 163, 179)
+
 # フォント
 pygame.init()
 Makinas_35 = pygame.font.Font(os.path.join("fonts","Makinas-4-Flat.otf"), 35)
