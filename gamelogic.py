@@ -609,22 +609,25 @@ class Shield:
                     target.active = False
 
                 elif type(target)==Shuriken:
-                    circle_pos = target.pos + target.CONST.hit_circles[0].rel_pos
-                    circle_radius = target.CONST.hit_circles[0].radius
-                    # 反射位置の調整（互いのキャラが接近中は無効）
-                    if self.pos.distance_to(target.user.pos) >= self.radius:
-                        if (target.pos-self.pos).length() == 0:
-                            target.pos += Vector2(1,0)*(self.radius + circle_radius)
-                        else:
-                            target.pos += (target.pos-self.pos).normalize()*(self.radius + circle_radius) - (target.pos-self.pos)
-                    # 反射するための前処理
-                    self.hitback_objects.append(target)
-                    target.user.shuriken.remove(target)
-                    # 反射処理
-                    target.user = self.user
-                    target.alive_count = 0
-                    target.no_damage_count=8
-                    target.speed *= -1
+                    if target.bounced:
+                        target.active = False
+                    else:
+                        target.bounced = True
+                        circle_radius = target.CONST.hit_circles[0].radius
+                        # 反射位置の調整（互いのキャラが接近中は無効）
+                        if self.pos.distance_to(target.user.pos) >= self.radius:
+                            if (target.pos-self.pos).length() == 0:
+                                target.pos += Vector2(1,0)*(self.radius + circle_radius)
+                            else:
+                                target.pos += (target.pos-self.pos).normalize()*(self.radius + circle_radius) - (target.pos-self.pos)
+                        # 反射するための前処理
+                        self.hitback_objects.append(target)
+                        target.user.shuriken.remove(target)
+                        # 反射処理
+                        target.user = self.user
+                        target.alive_count = 0
+                        target.no_damage_count=8
+                        target.speed *= -1
                         
 
     def update(self, stage:Stage):
@@ -1348,6 +1351,7 @@ class Shuriken(GameObject):
         self.active = False         # 手裏剣を更新するかの判定
         self.wait = True            # 射出モーション中かの判定（表示を切らない為）
         self.display = True         # 手裏剣を表示するかの判定
+        self.bounced = False        # 反射したかの判定
 
         self.alive_count = 0        # 弾の存在時間のカウント
         self.hitwait_count = 0      # ヒットストップ中のカウント
