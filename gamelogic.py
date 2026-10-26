@@ -477,6 +477,7 @@ class Character(GameObject):
         # 初撃
         if self.no_damage_count==0:
             self.hp -= damage
+            self.hp = max(self.hp, 0)
             self.combo += 1
         # コンボ
         elif self.combo_count>0:
@@ -568,6 +569,7 @@ class Shield:
         self.reset()
         if self.user.hp > damage:
             self.user.hp -= int(damage/2)
+            self.user.hp = max(self.user.hp, 0)
 
 
     # シールド判定
@@ -1098,10 +1100,6 @@ class DroneManager:
             drone_list += drone.hit_check(pos, r, anti_bullet=anti_bullet)
         return drone_list
 
-    def damage_process(self, damage):
-        for drone in self.magazine:
-            drone.damage_process(damage)
-
     def update(self, stage:Stage):
         if self.reload_count>0:
             self.reload_count -= 1
@@ -1446,10 +1444,6 @@ class ShurikenManager:
         for shuriken in self.magazine:
             shuriken_list += shuriken.hit_check(pos, r, anti_bullet=anti_bullet)
         return shuriken_list
-
-    def damage_process(self, damage):
-        for shuriken in self.magazine:
-            shuriken.damage_process(damage)
 
     def remove(self, shuriken):
         self.magazine.remove(shuriken)
