@@ -477,7 +477,6 @@ class Character(GameObject):
         # 初撃
         if self.no_damage_count==0:
             self.hp -= damage
-            self.blowed = True
             self.combo += 1
         # コンボ
         elif self.combo_count>0:
@@ -844,6 +843,7 @@ class Melee:
                         if self.direction == "left":
                             vector.x *= -1
                         target.speed += vector
+                        target.blowed = True
                     #シールドに当たった
                     elif type(target) == Shield:
                         # 距離割合の計算（食い込み補正のため）
