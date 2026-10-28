@@ -30,7 +30,7 @@ class GameState:
     def __init__(self):
         self.stage = Stage()
         self.characters_list = []
-        self.active = False
+        self.status = "start"
         self.init_game()
 
     def init_game(self):
@@ -50,7 +50,8 @@ class GameState:
                     Stage.WIDTH/len(self.characters_list)*(i+1/2),
                     Stage.GND_HEIGHT+character.radius*2
                 )
-        self.active = True
+        self.status = "play"
+        self.ko_time = self.ko_count = 0
         self.frame_number = 0
 
     """ キャラの追加 """
@@ -72,25 +73,57 @@ class GameState:
 
     """ 入力の登録(不可逆的な変更) """
     def regist_input(self, id, new_input:InputHandler):
-        for character in [_ for _ in self.characters_list if _.id == id]:
-            character.input_update(new_input)
+        if self.status == "play":
+            for character in [_ for _ in self.characters_list if _.id == id]:
+                character.input_update(new_input)
 
     """ ゲーム状況を更新してフレームを生成 """
     def update(self):
         self.frame_number += 1
         self.stage.update()
-        # リスト順による判定の優先順位を排除するためキャラ情報を優先して更新
-        for character in self.characters_list:
-            character.update(self.stage)
-        for character in self.characters_list:
-            character.objects_update(self.stage)
 
-        # キャラクターのHPが0以下になった場合、ゲーム終了
-        for character in self.characters_list:
-            if character.hp <= 0:
-                self.active = False
-                break
-                
+        if self.status == "play":
+            # リスト順による判定の優先順位を排除するためキャラ情報を優先して更新
+            for character in self.characters_list:
+                character.update(self.stage)
+
+            for character in self.characters_list:
+                character.objects_update(self.stage)
+
+            # キャラクターのHPが0以下になった場合、ゲーム終了
+            for character in self.characters_list:
+                if character.hp <= 0:
+                    self.status = "ko"
+                    # 強制的に負けた側のスキルのHPを0にする
+                    for target in character.hit_check(Vector2(Stage.WIDTH/2, Stage.HEIGHT/2), Vector2(Stage.WIDTH, Stage.HEIGHT).length(), anti_bullet=True):
+                        target.damage_process(9999)
+                    # KO演出用にヒットストップの増加
+                    if character.stop_count < 4:
+                        character.stop_count = 4
+                    else:
+                        character.stop_count += 2
+            # KO演出をする前準備
+            # ヒットストップ時間からKO演出中に更新する時間を計算
+            if self.status == "ko":
+                max_stop = max([chara.stop_count for chara in self.characters_list])
+                for chara in self.characters_list:
+                    chara.stop_count = max_stop
+                # KO演出中の更新時間を計算
+                self.ko_time = max_stop
+                self.ko_count = 0
+
+        # KO演出中の処理
+        elif self.status == "ko":
+            # キャラクターの更新は行うが、オブジェクトの更新は行なわい
+            for character in self.characters_list:
+                character.update(self.stage)
+            self.ko_count += 1
+            if self.ko_count >= self.ko_time:
+                self.status = "end"
+                self.ko_count = self.ko_time = 0
+        # ゲームが終了している場合、更新を行わない
+        elif self.status == "end":
+            pass
 
 
 """ ゲームステージ全体の情報の管理するクラス """

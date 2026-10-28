@@ -9,6 +9,7 @@ import pickle
 class GameManeger:
     FPS = 64
     FRAME_LATENCY = 1/FPS
+    KO_UPDATE_LATENCY = 1/16
 
     def __init__(self):
         self.run = True
@@ -27,7 +28,7 @@ class GameManeger:
 
     """ ゲームのリスタート """
     def try_restart(self):
-        if not self.state.active:
+        if not self.state.status == "play":
             self.state.init_game()
             self.renderer.ko_animator.reset()
 
@@ -55,15 +56,21 @@ class GameManeger:
         windll.winmm.timeBeginPeriod(1)     # タイマーの精度向上
         frame_time = [perf_counter()]*2     # フレームレートの観測用リスト
         delay = 0
+        ko_update_timing = 0
         while self.run:
             start = perf_counter()
 
-            if self.state.active:
+            if self.state.status == "play":
                 self.state.update()     # ゲーム状況を更新
                 self.update_func()      # フレーム毎実行処理
                 # ゲーム終了判定
-                if not self.state.active:
+                if self.state.status != "play":
                     self.renderer.ko_animation_start()    # K.O.演出開始
+            else:
+                # KO演出中は更新頻度を落とす
+                if ko_update_timing + self.KO_UPDATE_LATENCY < perf_counter():
+                    self.state.update()
+                    ko_update_timing = perf_counter()
 
             self.renderer.update(self.FRAME_LATENCY)    # 描画時に必要な更新
 
@@ -78,7 +85,7 @@ class GameManeger:
                 sleep(int((self.FRAME_LATENCY-delay)/0.001)*0.001)
             while perf_counter()-start < self.FRAME_LATENCY:
                 pass
-        windll.winmm.timeEndPeriod(1)
+        windll.winmm.timeEndPeriod(1)   
 
 # pickleを利用した高速なdeepcopy
 def fast_copy(obj):
