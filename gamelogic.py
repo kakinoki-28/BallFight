@@ -107,7 +107,7 @@ class GameState:
             if self.status == "ko":
                 max_stop = max([chara.stop_count for chara in self.characters_list])
                 for chara in self.characters_list:
-                    chara.stop_count = max_stop
+                    chara.set_stop(max_stop, shake=chara.shake_ratio)
                 # KO演出中の更新時間を計算
                 self.ko_time = max_stop
                 self.ko_count = 0
@@ -311,8 +311,12 @@ class Character(GameObject):
             shake = int(self.shake_ratio*self.stop_count/self.stop_frame)+1
             random_side = (-1)**randint(0,1)
             self.shake_offset = Vector2( int( (-1)**(self.stop_count//2)*(randint(0,shake//2)+round(shake/2))), int( random_side*(randint(0,shake//2)+round(shake/2)) ) )
+            # 地上にいる場合は振動を水平に制限する
             if self.on_ground:
+                length = self.shake_offset.length()
                 self.shake_offset.y = 0
+                if length > 0:
+                    self.shake_offset = self.shake_offset.normalize()*length
             return None
         else:
             self.stop_frame = 0
